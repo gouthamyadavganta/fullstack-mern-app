@@ -149,9 +149,11 @@ jobs:
           sudo mv argocd /usr/local/bin/
 
       - name: Argo CD Sync with Token
+        env:
+          ARGOCD_OPTS: "--insecure --plaintext --grpc-web"
         run: |
-          argocd login ${{ secrets.ARGOCD_SERVER }} --insecure --plaintext --grpc-web --auth-token ${{ secrets.ARGOCD_TOKEN }}
-          argocd app sync fullstack-app --grpc-web
+          argocd login ${{ secrets.ARGOCD_SERVER }} --auth-token ${{ secrets.ARGOCD_TOKEN }}
+          argocd app sync fullstack-app
           argocd app wait fullstack-app --health --operation --timeout 120
 
   healthcheck:
