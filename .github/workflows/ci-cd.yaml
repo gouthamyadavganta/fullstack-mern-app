@@ -150,7 +150,12 @@ jobs:
 
       - name: Argo CD Login and Sync
         run: |
-          argocd login ${{ secrets.ARGOCD_SERVER }} --insecure --grpc-web --auth-token ${{ secrets.ARGOCD_TOKEN }}
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --username ${{ secrets.ARGOCD_USERNAME }} \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --insecure \
+            --grpc-web
+
           argocd app sync fullstack-app --grpc-web
           argocd app wait fullstack-app --health --operation --timeout 120
 
