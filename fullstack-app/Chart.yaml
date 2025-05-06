@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fullstack-app
+description: A simple Helm chart for MERN full-stack application
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
