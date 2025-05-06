@@ -3,7 +3,14 @@ name: Full DevSecOps CI/CD Pipeline
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run as dry-run (no deploy)?'
+        required: false
+        default: 'true'
 
 env:
   AWS_REGION: us-east-2
@@ -43,10 +50,12 @@ jobs:
             -Dsonar.sources=.
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
 
   build-and-push:
     name: Build & Push Docker Images
     needs: quality-gates
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,7 +78,7 @@ jobs:
           tags: gantagouthamyadav/fullstack-client:${{ github.sha }}
 
   terraform:
-    name: Terraform Infra Provisioning
+    name: Terraform
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
@@ -79,17 +88,21 @@ jobs:
         with:
           terraform_version: 1.5.7
 
-      - name: Terraform Init & Apply
+      - name: Terraform Init & Plan or Apply
         working-directory: terraform-aws-infra
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           terraform init -backend-config="bucket=${{ env.TFSTATE_BUCKET }}"
-          terraform apply -auto-approve
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.dry_run }}" == "false" ]]; then
+            terraform apply -auto-approve
+          else
+            terraform plan
+          fi
 
   helm-release:
-    name: Helm Package & S3 Push
+    name: Helm Lint/Template or Package/Push
     needs: terraform
     runs-on: ubuntu-latest
     steps:
@@ -98,23 +111,22 @@ jobs:
       - name: Setup Helm
         uses: azure/setup-helm@v3
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Package & Push Helm Chart
+      - name: Helm Operation
         run: |
           cd fullstack-app
-          helm package . --version 0.1.${{ github.run_number }} --app-version ${{ github.sha }}
-          aws s3 cp fullstack-app-0.1.${{ github.run_number }}.tgz s3://${{ env.CHART_BUCKET }}/
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.dry_run }}" == "false" ]]; then
+            helm package . --version 0.1.${{ github.run_number }} --app-version ${{ github.sha }}
+            aws s3 cp fullstack-app-0.1.${{ github.run_number }}.tgz s3://${{ env.CHART_BUCKET }}/
+          else
+            helm lint .
+            helm template . --values values.yaml
+          fi
 
   argocd-sync:
     name: Argo CD Sync
     needs: helm-release
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
       - name: Trigger Argo CD Sync
         uses: argoproj/argocd-action@v2
@@ -127,6 +139,7 @@ jobs:
     name: Verify Deployment
     needs: argocd-sync
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
       - name: Curl health endpoint
         run: |
