@@ -146,10 +146,10 @@ jobs:
          run: |
            docker run --rm \
              --network host \
-             -e ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }} \
-             -e ARGOCD_AUTH_TOKEN=${{ secrets.ARGOCD_TOKEN }} \
              argoproj/argocd:v2.10.7 \
              argocd app sync fullstack-app \
+             --server ${{ secrets.ARGOCD_SERVER }} \
+             --auth-token ${{ secrets.ARGOCD_TOKEN }} \
              --grpc-web
 
   healthcheck:
