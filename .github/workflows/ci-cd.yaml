@@ -61,8 +61,8 @@ jobs:
   build-and-push:
     name: Build & Push Docker Images
     needs: quality-gates
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
       - uses: actions/checkout@v4
 
