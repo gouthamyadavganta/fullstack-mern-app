@@ -52,7 +52,7 @@ jobs:
         with:
           projectBaseDir: .
           args: >
-            -Dsonar.projectKey=gouthamyadavganta_fullstack-devsecops-project
+            -Dsonar.projectKey=gouthamyadavganta_fullstack-mern-app
             -Dsonar.organization=gouthamyadavganta
             -Dsonar.sources=.
         env:
