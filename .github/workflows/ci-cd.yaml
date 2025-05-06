@@ -148,7 +148,7 @@ jobs:
             -e ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }} \
             -e ARGOCD_AUTH_TOKEN=${{ secrets.ARGOCD_TOKEN }} \
             argoproj/argocd:v2.10.7 \
-            app sync fullstack-app --grpc-web
+            argocd app sync fullstack-app --grpc-web
 
   healthcheck:
     name: Verify Deployment
