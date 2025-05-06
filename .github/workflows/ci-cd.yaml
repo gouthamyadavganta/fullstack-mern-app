@@ -150,10 +150,9 @@ jobs:
 
       - name: Argo CD Sync with Token
         run: |
-          run: |
-            argocd --grpc-web --insecure --plaintext login ${{ secrets.ARGOCD_SERVER }} --auth-token ${{ secrets.ARGOCD_TOKEN }}
-            argocd app sync fullstack-app --grpc-web
-            argocd app wait fullstack-app --health --operation --timeout 120
+          argocd --grpc-web --insecure --plaintext login ${{ secrets.ARGOCD_SERVER }} --auth-token ${{ secrets.ARGOCD_TOKEN }}
+          argocd app sync fullstack-app --grpc-web
+          argocd app wait fullstack-app --health --operation --timeout 120
 
   healthcheck:
     name: Verify Deployment
