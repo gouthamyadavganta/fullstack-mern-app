@@ -155,6 +155,7 @@ jobs:
             --password ${{ secrets.ARGOCD_PASSWORD }} \
             --insecure \
             --grpc-web
+            --plaintext
 
           argocd app sync fullstack-app --grpc-web
           argocd app wait fullstack-app --health --operation --timeout 120
