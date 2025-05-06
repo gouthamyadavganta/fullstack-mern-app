@@ -24,8 +24,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          cd server && npm ci
-          cd ../client && npm ci
+          cd server && npm install --legacy-peer-deps
+          cd ../client && npm install --legacy-peer-deps
           cd ..
 
       - name: Lint & Test
@@ -131,3 +131,4 @@ jobs:
       - name: Curl health endpoint
         run: |
           curl --fail http://fullstack.3.132.115.98.nip.io/api/posts || exit 1
+
