@@ -145,10 +145,12 @@ jobs:
        - name: Trigger Argo CD Sync using Docker
          run: |
            docker run --rm \
-            -e ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }} \
-            -e ARGOCD_AUTH_TOKEN=${{ secrets.ARGOCD_TOKEN }} \
-            argoproj/argocd:v2.10.7 \
-            argocd app sync fullstack-app --grpc-web
+             --network host \
+             -e ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }} \
+             -e ARGOCD_AUTH_TOKEN=${{ secrets.ARGOCD_TOKEN }} \
+             argoproj/argocd:v2.10.7 \
+             argocd app sync fullstack-app \
+             --grpc-web
 
   healthcheck:
     name: Verify Deployment
