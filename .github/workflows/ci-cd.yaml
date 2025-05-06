@@ -134,8 +134,7 @@ jobs:
           else
             helm lint .
             helm template . --values values.yaml
-          fi
-
+      
   argocd-sync:
     name: Argo CD Sync
     needs: helm-release
@@ -143,18 +142,16 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
       - name: Install Argo CD CLI
-      run: |
-        curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
-        chmod +x argocd
-        sudo mv argocd /usr/local/bin/
-
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
+          chmod +x argocd
+          sudo mv argocd /usr/local/bin/
 
       - name: Argo CD Login and Sync
-      run: |
-        argocd login ${{ secrets.ARGOCD_SERVER }} --insecure --grpc-web --auth-token ${{ secrets.ARGOCD_TOKEN }}
-        argocd app sync fullstack-app --grpc-web
-        argocd app wait fullstack-app --health --operation --timeout 120
-
+        run: |
+          argocd login ${{ secrets.ARGOCD_SERVER }} --insecure --grpc-web --auth-token ${{ secrets.ARGOCD_TOKEN }}
+          argocd app sync fullstack-app --grpc-web
+          argocd app wait fullstack-app --health --operation --timeout 120
 
   healthcheck:
     name: Verify Deployment
