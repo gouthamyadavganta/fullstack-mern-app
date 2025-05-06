@@ -134,7 +134,6 @@ jobs:
           else
             helm lint .
             helm template . --values values.yaml
-          fi
 
   argocd-sync:
     name: Argo CD Sync
@@ -148,11 +147,18 @@ jobs:
           chmod +x argocd
           sudo mv argocd /usr/local/bin/
 
-      - name: Argo CD Sync with Token
+      - name: Argo CD Sync with Header Auth
         run: |
-          argocd --grpc-web --insecure --plaintext login ${{ secrets.ARGOCD_SERVER }} --auth-token ${{ secrets.ARGOCD_TOKEN }}
-          argocd app sync fullstack-app --grpc-web
-          argocd app wait fullstack-app --health --operation --timeout 120
+          export ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
+          export AUTH_HEADER="Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}"
+
+          argocd --grpc-web --insecure --plaintext \
+            --header "$AUTH_HEADER" \
+            app sync fullstack-app
+
+          argocd --grpc-web --insecure --plaintext \
+            --header "$AUTH_HEADER" \
+            app wait fullstack-app --health --operation --timeout 120
 
   healthcheck:
     name: Verify Deployment
