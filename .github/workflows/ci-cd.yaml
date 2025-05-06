@@ -143,11 +143,12 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
       - name: Trigger Argo CD Sync
-        uses: argoproj/argocd-action@v1.0.1
+        uses: matt-ball/argocd-gh-action@v1.3.0
         with:
-          argocd_server: ${{ secrets.ARGOCD_SERVER }}
-          argocd_token: ${{ secrets.ARGOCD_TOKEN }}
-          args: app sync fullstack-app
+          version: v2.10.7  # Replace with your Argo CD CLI version if needed
+          address: ${{ secrets.ARGOCD_SERVER }}
+          token: ${{ secrets.ARGOCD_TOKEN }}
+          command: app sync fullstack-app
 
   healthcheck:
     name: Verify Deployment
