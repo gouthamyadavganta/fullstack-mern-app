@@ -150,16 +150,19 @@ jobs:
 
       - name: Argo CD Sync with Header Auth
         run: |
-          export ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
-          export AUTH_HEADER="Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}"
+          AUTH_HEADER="Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}"
+          ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
 
-          argocd --grpc-web --insecure --plaintext \
-            --header "$AUTH_HEADER" \
-            app sync fullstack-app
+          argocd app sync fullstack-app \
+            --server $ARGOCD_SERVER \
+            --grpc-web --insecure --plaintext \
+            --header "$AUTH_HEADER"
 
-          argocd --grpc-web --insecure --plaintext \
+          argocd app wait fullstack-app \
+            --server $ARGOCD_SERVER \
+            --grpc-web --insecure --plaintext \
             --header "$AUTH_HEADER" \
-            app wait fullstack-app --health --operation --timeout 120
+            --health --operation --timeout 120
 
   healthcheck:
     name: Verify Deployment
