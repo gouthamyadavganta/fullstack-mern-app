@@ -152,17 +152,8 @@ jobs:
         run: |
           AUTH_HEADER="Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}"
           ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
-
-          argocd app sync fullstack-app \
-            --server $ARGOCD_SERVER \
-            --grpc-web --insecure --plaintext \
-            --header "$AUTH_HEADER"
-
-          argocd app wait fullstack-app \
-            --server $ARGOCD_SERVER \
-            --grpc-web --insecure --plaintext \
-            --header "$AUTH_HEADER" \
-            --health --operation --timeout 120
+          argocd app sync fullstack-app             --server $ARGOCD_SERVER             --grpc-web             --insecure             --header "$AUTH_HEADER"
+          argocd app wait fullstack-app             --server $ARGOCD_SERVER             --grpc-web             --insecure             --header "$AUTH_HEADER"             --health --operation --timeout 120
 
   healthcheck:
     name: Verify Deployment
