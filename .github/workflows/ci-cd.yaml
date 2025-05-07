@@ -142,6 +142,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
+      - name: Install Argo CD CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
+          chmod +x argocd
+          sudo mv argocd /usr/local/bin/argocd
+
       - name: Argo CD Sync with Auth Token
         run: |
           ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
@@ -167,3 +173,4 @@ jobs:
       - name: Curl health endpoint
         run: |
           curl --fail http://fullstack.3.132.115.98.nip.io/api/posts || exit 1
+
