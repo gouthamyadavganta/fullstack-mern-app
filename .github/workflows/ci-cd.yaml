@@ -148,12 +148,12 @@ jobs:
           chmod +x argocd
           sudo mv argocd /usr/local/bin/
 
-      - name: Argo CD Sync with Auth Token
+      - name: Argo CD Sync with Header Auth
         run: |
+          AUTH_HEADER="Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}"
           ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
-          argocd app sync fullstack-app             --server $ARGOCD_SERVER             --grpc-web             --insecure             --auth-token ${{ secrets.ARGOCD_TOKEN }}
-
-          argocd app wait fullstack-app             --server $ARGOCD_SERVER             --grpc-web             --insecure             --auth-token ${{ secrets.ARGOCD_TOKEN }}             --health --operation --timeout 120
+          argocd app sync fullstack-app             --server $ARGOCD_SERVER             --grpc-web             --insecure             --header "$AUTH_HEADER"
+          argocd app wait fullstack-app             --server $ARGOCD_SERVER             --grpc-web             --insecure             --header "$AUTH_HEADER"             --health --operation --timeout 120
 
   healthcheck:
     name: Verify Deployment
@@ -164,4 +164,3 @@ jobs:
       - name: Curl health endpoint
         run: |
           curl --fail http://fullstack.3.132.115.98.nip.io/api/posts || exit 1
-
