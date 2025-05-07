@@ -142,18 +142,21 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
-      - name: Install Argo CD CLI
+      - name: Argo CD Sync with Auth Token
         run: |
-          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
-          chmod +x argocd
-          sudo mv argocd /usr/local/bin/
-
-      - name: Argo CD Sync with Header Auth
-        run: |
-          AUTH_HEADER="Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}"
           ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
-          argocd app sync fullstack-app             --server $ARGOCD_SERVER             --grpc-web             --insecure             --header "$AUTH_HEADER"
-          argocd app wait fullstack-app             --server $ARGOCD_SERVER             --grpc-web             --insecure             --header "$AUTH_HEADER"             --health --operation --timeout 120
+          argocd app sync fullstack-app \
+            --server $ARGOCD_SERVER \
+            --grpc-web \
+            --insecure \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }}
+
+          argocd app wait fullstack-app \
+            --server $ARGOCD_SERVER \
+            --grpc-web \
+            --insecure \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+            --health --operation --timeout 120
 
   healthcheck:
     name: Verify Deployment
