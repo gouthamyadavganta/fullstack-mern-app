@@ -23,7 +23,7 @@ import User from "./models/User.js";
 import Post from "./models/Post.js";
 import { users, posts } from "./data/index.js";
 
-/* CONFIGURATION */
+// CONFIG
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -37,7 +37,7 @@ app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 app.use(cors());
 app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 
-/* FILE STORAGE */
+// FILE STORAGE
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "public/assets");
@@ -48,21 +48,21 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-/* HEALTH CHECK ROUTE */
+// HEALTH CHECK (public)
 app.get("/health", (req, res) => {
-  res.status(200).send("OK");
+  res.status(200).json({ message: "API is healthy" });
 });
 
-/* ROUTES WITH FILES */
+// ROUTES WITH FILES
 app.post("/auth/register", upload.single("picture"), register);
 app.post("/posts", verifyToken, upload.single("picture"), createPost);
 
-/* ROUTES */
+// ROUTES
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/posts", postRoutes);
 
-/* MONGODB CONNECTION */
+// MONGO CONNECTION
 const PORT = process.env.PORT || 6001;
 const mongoUri =
   process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DB_URI;
@@ -76,9 +76,11 @@ mongoose
   })
   .then(() => {
     console.log("✅ Connected to MongoDB");
-    app.listen(PORT, () =>
-      console.log(`🚀 Server running on port ${PORT}`)
-    );
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+
+    // Optional: Seeding (use once)
     // User.insertMany(users);
     // Post.insertMany(posts);
   })
