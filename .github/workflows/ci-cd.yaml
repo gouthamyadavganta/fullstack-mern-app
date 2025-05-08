@@ -60,9 +60,37 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
 
+  tfsec:
+    name: Terraform Security Scan (tfsec)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tfsec
+        run: |
+          curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o tfsec
+          chmod +x tfsec
+          sudo mv tfsec /usr/local/bin/
+
+      - name: Run tfsec
+        run: tfsec terraform-aws-infra/
+
+  tflint:
+    name: Terraform Lint (tflint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tflint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+      - name: Run tflint
+        run: tflint --recursive terraform-aws-infra/
+
   build-and-push:
     name: Build & Push Docker Images
-    needs: quality-gates
+    needs: [quality-gates, tfsec, tflint]
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
@@ -84,6 +112,16 @@ jobs:
           context: client
           push: true
           tags: gantagouthamyadav/fullstack-client:${{ github.sha }}
+
+      - name: Trivy Scan (Server)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: gantagouthamyadav/fullstack-server:${{ github.sha }}
+
+      - name: Trivy Scan (Client)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: gantagouthamyadav/fullstack-client:${{ github.sha }}
 
   terraform:
     name: Terraform
@@ -135,7 +173,6 @@ jobs:
           else
             helm lint .
             helm template . --values values.yaml
-          fi
 
   argocd-sync:
     name: Argo CD Sync
