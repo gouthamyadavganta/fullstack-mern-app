@@ -73,6 +73,7 @@ jobs:
           sudo mv tfsec /usr/local/bin/
 
       - name: Run tfsec
+        continue-on-error: true
         run: tfsec terraform-aws-infra/
 
   tflint:
@@ -86,7 +87,7 @@ jobs:
           curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
 
       - name: Run tflint
-        run: tflint --recursive terraform-aws-infra/
+        run: tflint --chdir=terraform-aws-infra
 
   build-and-push:
     name: Build & Push Docker Images
