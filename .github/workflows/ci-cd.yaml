@@ -173,5 +173,23 @@ jobs:
     steps:
       - name: Curl health endpoint
         run: |
-          curl --fail http://fullstack.mernappproject.com/api/posts || exit 1
+          curl --fail http://fullstack.mernappproject.com/health || exit 1
+
+  cypress-e2e:
+    name: Cypress E2E Tests
+    needs: healthcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Cypress tests
+        run: npx cypress run
 
