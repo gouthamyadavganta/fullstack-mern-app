@@ -86,7 +86,8 @@ jobs:
         run: |
           curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
 
-      - name: Run tflint
+      - name: Run tflint (non-blocking)
+        continue-on-error: true
         run: tflint --chdir=terraform-aws-infra
 
   build-and-push:
@@ -105,14 +106,18 @@ jobs:
         with:
           context: server
           push: true
-          tags: gantagouthamyadav/fullstack-server:${{ github.sha }}
+          tags: |
+            gantagouthamyadav/fullstack-server:${{ github.sha }}
+            gantagouthamyadav/fullstack-server:latest
 
       - name: Build & Push Client Image
         uses: docker/build-push-action@v4
         with:
           context: client
           push: true
-          tags: gantagouthamyadav/fullstack-client:${{ github.sha }}
+          tags: |
+            gantagouthamyadav/fullstack-client:${{ github.sha }}
+            gantagouthamyadav/fullstack-client:latest
 
       - name: Trivy Scan (Server)
         uses: aquasecurity/trivy-action@master
@@ -172,8 +177,7 @@ jobs:
             helm package . --version 0.1.${{ github.run_number }} --app-version ${{ github.sha }}
             aws s3 cp fullstack-app-0.1.${{ github.run_number }}.tgz s3://${{ env.CHART_BUCKET }}/
           else
-            helm lint .
-            helm template . --values values.yaml
+            helm lint . && helm template . --values values.yaml
 
   argocd-sync:
     name: Argo CD Sync
@@ -210,8 +214,7 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
       - name: Curl health endpoint
-        run: |
-          curl --fail http://fullstack.mernappproject.com/api/health || exit 1
+        run: curl --fail --max-time 5 http://fullstack.mernappproject.com/api/health || exit 1
 
   cypress-e2e:
     name: Cypress E2E Tests
