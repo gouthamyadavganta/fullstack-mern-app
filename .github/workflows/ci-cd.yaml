@@ -177,7 +177,9 @@ jobs:
             helm package . --version 0.1.${{ github.run_number }} --app-version ${{ github.sha }}
             aws s3 cp fullstack-app-0.1.${{ github.run_number }}.tgz s3://${{ env.CHART_BUCKET }}/
           else
-            helm lint . && helm template . --values values.yaml
+            helm lint .
+            helm template . --values values.yaml
+          fi
 
   argocd-sync:
     name: Argo CD Sync
