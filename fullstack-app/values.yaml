@@ -7,7 +7,7 @@ client:
 
 server:
   image: gantagouthamyadav/fullstack-server
-  tag: 9bee226
+  tag: public-posts
   pullPolicy: Always
   replicas: 2
   port: 6001
