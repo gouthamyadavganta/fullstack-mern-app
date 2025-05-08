@@ -173,7 +173,7 @@ jobs:
     steps:
       - name: Curl health endpoint
         run: |
-          curl --fail http://fullstack.mernappproject.com/health || exit 1
+          curl --fail http://fullstack.mernappproject.com/api/health || exit 1
 
   cypress-e2e:
     name: Cypress E2E Tests
