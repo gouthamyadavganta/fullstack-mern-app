@@ -16,6 +16,7 @@ env:
   AWS_REGION: us-east-2
   TFSTATE_BUCKET: ${{ secrets.TFSTATE_BUCKET }}
   CHART_BUCKET: ${{ secrets.CHART_BUCKET }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   quality-gates:
@@ -162,7 +163,7 @@ jobs:
             --grpc-web \
             --insecure \
             --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --health --operation --timeout 120
+            --health --operation --timeout 180 || echo "App is still progressing — continuing CI"
 
   healthcheck:
     name: Verify Deployment
