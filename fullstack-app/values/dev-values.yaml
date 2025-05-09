@@ -1,0 +1,7 @@
+image:
+  repository:
+    server: gantagouthamyadav/fullstack-server
+    client: gantagouthamyadav/fullstack-client
+  tag: latest
+
+replicaCount: 1

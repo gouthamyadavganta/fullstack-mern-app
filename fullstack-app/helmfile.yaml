@@ -1,0 +1,22 @@
+environments:
+  dev:
+    values:
+      - values/dev-values.yaml
+      - values/secrets.enc.yaml
+      - values/velero-values.yaml
+
+releases:
+  - name: server
+    namespace: fullstack
+    chart: .
+    values:
+      - values/dev-values.yaml
+      - values/secrets.enc.yaml
+
+  - name: velero
+    namespace: velero
+    createNamespace: true
+    chart: vmware-tanzu/velero
+    version: 5.0.2
+    values:
+      - values/velero-values.yaml

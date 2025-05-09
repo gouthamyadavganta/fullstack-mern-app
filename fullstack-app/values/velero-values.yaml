@@ -1,0 +1,21 @@
+configuration:
+  backupStorageLocations:
+    - name: default
+      provider: aws
+      bucket: fullstack-mern-velero-backups
+      config:
+        region: us-east-2
+
+  volumeSnapshotLocations:
+    - name: default
+      provider: aws
+      config:
+        region: us-east-2
+
+credentials:
+  useSecret: true
+  secretContents:
+    cloud: |
+      [default]
+      aws_access_key_id = {{ .Values.aws.accessKeyId }}
+      aws_secret_access_key = {{ .Values.aws.secretAccessKey }}
