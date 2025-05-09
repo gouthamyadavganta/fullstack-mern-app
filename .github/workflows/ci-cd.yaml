@@ -215,7 +215,7 @@ jobs:
           helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
           helm repo update
           cd fullstack-app
-          helmfile -e dev --no-diff apply
+          helmfile -e dev apply
 
   argocd-sync:
     name: Argo CD Sync
