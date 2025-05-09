@@ -162,8 +162,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Helm
-        uses: azure/setup-helm@v3
+      - name: Setup Helm (latest) + Diff Plugin
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm plugin install https://github.com/databus23/helm-diff
 
       - name: Install Helmfile
         run: |
