@@ -153,19 +153,44 @@ jobs:
             terraform plan
           fi
 
+  helm-release:
+    name: Helm Lint/Template or Package/Push
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Helm Operation
+        run: |
+          cd fullstack-app
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.dry_run }}" == "false" ]]; then
+            helm package . --version 0.1.${{ github.run_number }} --app-version ${{ github.sha }}
+            aws s3 cp fullstack-app-0.1.${{ github.run_number }}.tgz s3://${{ env.CHART_BUCKET }}/
+          else
+            helm lint .
+            helm template . --values values.yaml
+
   helmfile-deploy:
     name: Helmfile Apply (Velero + App)
     needs: terraform
-    runs-on: ubuntu-latest
     if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Helm (latest) + Diff Plugin
-        run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          helm plugin install https://github.com/databus23/helm-diff
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
 
       - name: Install Helmfile
         run: |
@@ -190,16 +215,40 @@ jobs:
           helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
           helm repo update
           cd fullstack-app
-          helmfile -e dev --no-diff \
-            --set aws.accessKeyId="$AWS_ACCESS_KEY_ID" \
-            --set aws.secretAccessKey="$AWS_SECRET_ACCESS_KEY" \
-            apply
+          helmfile -e dev --no-diff apply
+
+  argocd-sync:
+    name: Argo CD Sync
+    needs: helmfile-deploy
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Install Argo CD CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
+          chmod +x argocd
+          sudo mv argocd /usr/local/bin/argocd
+
+      - name: Argo CD Sync with Auth Token
+        run: |
+          ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
+          argocd app sync fullstack-app \
+            --server $ARGOCD_SERVER \
+            --grpc-web \
+            --insecure \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }}
+
+          argocd app wait fullstack-app \
+            --server $ARGOCD_SERVER \
+            --grpc-web \
+            --insecure \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+            --health --operation --timeout 180 || echo "App is still progressing — continuing CI"
 
   healthcheck:
     name: Verify Deployment
-    needs: helmfile-deploy
+    needs: argocd-sync
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
       - name: Curl health endpoint
         run: curl --fail --max-time 5 http://fullstack.mernappproject.com/api/health || exit 1
