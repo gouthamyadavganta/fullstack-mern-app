@@ -170,11 +170,12 @@ jobs:
           chmod +x argocd && sudo mv argocd /usr/local/bin/
       - name: Argo CD Login & Sync
         run: |
-          argocd login argocd.fullstack.mernappproject.com \
+          argocd login argocd.mernappproject.com \
             --username admin \
             --password ${{ secrets.ARGOCD_PASS }} \
             --insecure
           argocd app sync fullstack-app --insecure
+          argocd app wait fullstack-app --health --timeout 60
 
   helmfile-deploy:
     name: Helmfile Apply (Velero + Monitoring)
@@ -183,39 +184,32 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
       - name: Setup Helm
         uses: azure/setup-helm@v3
-
       - name: Install Helmfile
         run: |
           wget https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_0.156.0_linux_amd64.tar.gz
           tar -xzf helmfile_0.156.0_linux_amd64.tar.gz
           chmod +x helmfile
           sudo mv helmfile /usr/local/bin/helmfile
-
       - name: Install Helm Diff Plugin
         run: helm plugin install https://github.com/databus23/helm-diff || true
-
       - name: Install SOPS + age
         run: |
           sudo apt-get update
           sudo apt-get install -y age
           curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
           chmod +x sops && sudo mv sops /usr/local/bin/
-
       - name: Add Helm Repos (Velero + Prometheus)
         run: |
           helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
-
       - name: Configure kubecontext for EKS
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
       - name: Helmfile Apply
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
