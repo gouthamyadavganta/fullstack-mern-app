@@ -65,13 +65,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install tfsec
         run: |
           curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o tfsec
           chmod +x tfsec
           sudo mv tfsec /usr/local/bin/
-
       - name: Run tfsec
         continue-on-error: true
         run: tfsec terraform-aws-infra/
@@ -81,11 +79,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install tflint
         run: |
           curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-
       - name: Run tflint
         continue-on-error: true
         run: tflint --chdir=terraform-aws-infra
@@ -97,11 +93,9 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Login to Docker Hub
         run: echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
-
-      - name: Build & Push Server Image
+      - name: Build & Push Server
         uses: docker/build-push-action@v4
         with:
           context: server
@@ -109,8 +103,7 @@ jobs:
           tags: |
             gantagouthamyadav/fullstack-server:${{ github.sha }}
             gantagouthamyadav/fullstack-server:latest
-
-      - name: Build & Push Client Image
+      - name: Build & Push Client
         uses: docker/build-push-action@v4
         with:
           context: client
@@ -118,29 +111,25 @@ jobs:
           tags: |
             gantagouthamyadav/fullstack-client:${{ github.sha }}
             gantagouthamyadav/fullstack-client:latest
-
       - name: Trivy Scan (Server)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: gantagouthamyadav/fullstack-server:${{ github.sha }}
-
       - name: Trivy Scan (Client)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: gantagouthamyadav/fullstack-client:${{ github.sha }}
 
   terraform:
-    name: Terraform
+    name: Terraform Apply
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.7
-
-      - name: Terraform Init & Plan or Apply
+      - name: Terraform Init & Apply
         working-directory: terraform-aws-infra
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -153,11 +142,44 @@ jobs:
             terraform plan
           fi
 
-  helmfile-deploy:
-    name: Helmfile Apply (Velero + App)
+  helm-deploy:
+    name: Helm Package & Upload to S3
     needs: terraform
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+      - name: Package Chart
+        run: |
+          helm dependency update fullstack-app
+          helm package fullstack-app
+          aws s3 cp fullstack-app-*.tgz s3://${{ env.CHART_BUCKET }}/
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  argocd-sync:
+    name: Argo CD Sync
+    needs: helm-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Argo CD CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd && sudo mv argocd /usr/local/bin/
+      - name: Argo CD Login & Sync
+        run: |
+          argocd login argocd.fullstack.mernappproject.com \
+            --username admin \
+            --password ${{ secrets.ARGOCD_PASS }} \
+            --insecure
+          argocd app sync fullstack-app --insecure
+
+  helmfile-deploy:
+    name: Helmfile Apply (Velero + Monitoring)
+    needs: argocd-sync
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -182,25 +204,31 @@ jobs:
           curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
           chmod +x sops && sudo mv sops /usr/local/bin/
 
-      - name: Helmfile Apply (with AWS secrets)
+      - name: Add Helm Repos (Velero + Prometheus)
+        run: |
+          helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+
+      - name: Configure kubecontext for EKS
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Helmfile Apply
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
-          helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
-          helm repo update
           cd fullstack-app
-          helmfile -e dev \
-            --set aws.accessKeyId="${AWS_ACCESS_KEY_ID}" \
-            --set aws.secretAccessKey="${AWS_SECRET_ACCESS_KEY}" \
-            apply
+          helmfile -e dev apply
 
   healthcheck:
     name: Verify Deployment
     needs: helmfile-deploy
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
     steps:
       - name: Curl health endpoint
         run: curl --fail --max-time 5 http://fullstack.mernappproject.com/api/health || exit 1
@@ -211,15 +239,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install dependencies
         run: npm ci
-
       - name: Run Cypress tests
         run: npx cypress run
 
