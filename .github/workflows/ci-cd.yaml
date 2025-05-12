@@ -221,12 +221,10 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Install Velero CLI and apply CRDs
+      - name: Apply Velero CRDs (static YAML)
         run: |
-          curl -sSL -o velero.tar.gz https://github.com/vmware-tanzu/velero/releases/download/v1.12.4/velero-v1.12.4-linux-amd64.tar.gz
-          tar -xzf velero.tar.gz
-          sudo mv velero-v1.12.4-linux-amd64/velero /usr/local/bin/velero
-          velero install --crds-only
+          curl -sSL -o velero-crds.yaml https://raw.githubusercontent.com/vmware-tanzu/velero/release-1.12/config/crd/crds.yaml
+          kubectl apply -f velero-crds.yaml --validate=false
 
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
         env:
