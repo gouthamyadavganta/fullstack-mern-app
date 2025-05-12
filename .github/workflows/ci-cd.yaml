@@ -220,11 +220,17 @@ jobs:
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
 
-      - name: Apply Velero CRDs (pre-install fix)
+      - name: Install Kustomize and Apply Velero CRDs
         run: |
-          curl -sSL -o velero-crds.yaml https://raw.githubusercontent.com/vmware-tanzu/velero/main/config/crd/crds.yaml
-          kubectl apply -f velero-crds.yaml
-          
+          curl -sLO https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64.tar.gz
+          tar -xzf kustomize_linux_amd64.tar.gz
+          chmod +x kustomize
+          sudo mv kustomize /usr/local/bin/
+
+          git clone https://github.com/vmware-tanzu/velero.git
+          cd velero/config/crd
+          kustomize build . | kubectl apply -f -
+
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
