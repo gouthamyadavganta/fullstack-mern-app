@@ -222,10 +222,9 @@ jobs:
 
       - name: Install Kustomize and Apply Velero CRDs
         run: |
-          curl -sLO https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64.tar.gz
-          tar -xzf kustomize_linux_amd64.tar.gz
+          curl -sSL -o kustomize https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64
           chmod +x kustomize
-          sudo mv kustomize /usr/local/bin/
+          sudo mv kustomize /usr/local/bin/kustomize
 
           git clone https://github.com/vmware-tanzu/velero.git
           cd velero/config/crd
