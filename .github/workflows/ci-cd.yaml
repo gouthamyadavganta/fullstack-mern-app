@@ -222,11 +222,7 @@ jobs:
 
       - name: Apply Velero CRDs (pre-install fix)
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/main/config/crd/crds.yaml
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/main/config/crd/bases/velero.io_volumesnapshotlocations.yaml
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/main/config/crd/bases/velero.io_backups.yaml
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/main/config/crd/bases/velero.io_schedules.yaml
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/main/config/crd/bases/velero.io_restores.yaml
+          kubectl apply -f https://github.com/vmware-tanzu/velero/releases/download/v1.13.2/crds.yaml
 
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
         env:
