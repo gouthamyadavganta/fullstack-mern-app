@@ -214,21 +214,12 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Add required Helm repos
+      - name: Install Velero CLI and apply CRDs
         run: |
-          helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo update
-
-      - name: Install Kustomize and Apply Velero CRDs
-        run: |
-          curl -sSL -o kustomize https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64
-          chmod +x kustomize
-          sudo mv kustomize /usr/local/bin/kustomize
-
-          git clone https://github.com/vmware-tanzu/velero.git
-          cd velero/config/crd
-          kustomize build . | kubectl apply -f -
+          curl -sSL -o velero.tar.gz https://github.com/vmware-tanzu/velero/releases/download/v1.12.4/velero-v1.12.4-linux-amd64.tar.gz
+          tar -xzf velero.tar.gz
+          sudo mv velero-v1.12.4-linux-amd64/velero /usr/local/bin/velero
+          velero install --crds-only
 
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
         env:
