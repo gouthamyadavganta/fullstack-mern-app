@@ -222,12 +222,9 @@ jobs:
 
       - name: Apply Velero CRDs (pre-install fix)
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/v1.12.4/config/crd/bases/velero.io_backupstoragelocations.yaml
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/v1.12.4/config/crd/bases/velero.io_volumesnapshotlocations.yaml
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/v1.12.4/config/crd/bases/velero.io_backups.yaml
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/v1.12.4/config/crd/bases/velero.io_schedules.yaml
-          kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/v1.12.4/config/crd/bases/velero.io_restores.yaml
-
+          curl -sSL -o velero-crds.yaml https://raw.githubusercontent.com/vmware-tanzu/velero/main/config/crd/crds.yaml
+          kubectl apply -f velero-crds.yaml
+          
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
