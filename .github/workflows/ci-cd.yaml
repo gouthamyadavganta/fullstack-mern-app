@@ -85,7 +85,7 @@ jobs:
     name: Build & Push Docker Images
     needs: [quality-gates, tfsec, tflint]
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
     steps:
       - uses: actions/checkout@v4
       - name: Login to Docker Hub
@@ -160,12 +160,13 @@ jobs:
           else
             helm lint .
             helm template . --values values.yaml
+          fi
 
   argocd-sync:
     name: Argo CD Sync
     needs: helm-release
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
     steps:
       - name: Install Argo CD CLI
         run: |
@@ -223,7 +224,7 @@ jobs:
     name: Verify Deployment
     needs: helmfile-deploy
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.dry_run == 'false' }}
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
     steps:
       - name: Curl health endpoint
         run: curl --fail --max-time 5 http://fullstack.mernappproject.com/api/health || exit 1
