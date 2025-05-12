@@ -4,7 +4,8 @@ environments:
       - values/dev-values.yaml
       - values/secrets.enc.yaml
       - values/velero-values.yaml
-
+      - values/kube-prometheus-values.yaml
+---
 releases:
   - name: server
     namespace: fullstack
@@ -20,3 +21,19 @@ releases:
     version: 5.0.2
     values:
       - values/velero-values.yaml
+
+  - name: kube-prometheus-stack
+    namespace: monitoring
+    createNamespace: true
+    chart: prometheus-community/kube-prometheus-stack
+    version: 58.5.0
+    values:
+      - values/kube-prometheus-values.yaml
+
+  - name: kubectl-cost
+    namespace: monitoring
+    createNamespace: false
+    chart: prometheus-community/kubectl-cost
+    version: 0.1.2
+    values:
+      - replicas: 1
