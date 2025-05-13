@@ -2,17 +2,25 @@ grafana:
   adminPassword: prom-operator
   service:
     type: LoadBalancer
-
   sidecar:
     dashboards:
       enabled: true
       label: grafana_dashboard
       folder: /var/lib/grafana/dashboards/custom
-
   dashboards:
     default:
       kubecost-dashboard:
         file: /var/lib/grafana/dashboards/custom/kubecost-dashboard.json
+
+kubeStateMetrics:
+  enabled: true
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "200m"
 
 prometheus:
   prometheusSpec:
@@ -21,9 +29,31 @@ prometheus:
     alertingEndpoints:
       - name: default
         namespace: monitoring
+    additionalArgs:
+      - "--web.enable-lifecycle"
+      - "--web.max-connections=512"
+      - "--web.enable-admin-api"
+      - "--storage.tsdb.max-block-duration=2h"
+      - "--storage.tsdb.retention.time=7d"
+      - "--storage.tsdb.max-samples=500000"
+      - "--web.max-body-size=10MB"
+  resources:
+    requests:
+      cpu: "300m"
+      memory: "512Mi"
+    limits:
+      cpu: "600m"
+      memory: "1Gi"
 
 alertmanager:
   enabled: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
   config:
     global:
       resolve_timeout: 5m
@@ -39,5 +69,12 @@ alertmanager:
           - send_resolved: true
             channel: '#alerts'
             username: 'prometheus'
-            api_url: '<REPLACE_WITH_YOUR_SLACK_WEBHOOK_URL>'
+            api_url: 'https://hooks.slack.com/services/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'
+
+defaultRules:
+  create: true
+  rules:
+    etcd: false
+    kubeApiserver: false
+    kubeScheduler: false
 
