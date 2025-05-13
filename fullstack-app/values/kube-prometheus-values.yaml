@@ -13,7 +13,8 @@ grafana:
         file: /var/lib/grafana/dashboards/custom/kubecost-dashboard.json
 
 kubeStateMetrics:
-  enabled: true
+  rbac:
+    create: true
   resources:
     requests:
       memory: "256Mi"
@@ -29,21 +30,20 @@ prometheus:
     alertingEndpoints:
       - name: default
         namespace: monitoring
+        port: web
     additionalArgs:
       - "--web.enable-lifecycle"
       - "--web.max-connections=512"
       - "--web.enable-admin-api"
       - "--storage.tsdb.max-block-duration=2h"
       - "--storage.tsdb.retention.time=7d"
-      - "--storage.tsdb.max-samples=500000"
-      - "--web.max-body-size=10MB"
-  resources:
-    requests:
-      cpu: "300m"
-      memory: "512Mi"
-    limits:
-      cpu: "600m"
-      memory: "1Gi"
+    resources:
+      requests:
+        cpu: "300m"
+        memory: "512Mi"
+      limits:
+        cpu: "600m"
+        memory: "1Gi"
 
 alertmanager:
   enabled: true
