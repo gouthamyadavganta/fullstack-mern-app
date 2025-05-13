@@ -187,7 +187,6 @@ jobs:
             --insecure \
             --auth-token ${{ secrets.ARGOCD_TOKEN }} \
             --health --operation --timeout 180 || echo "App is still progressing — continuing CI"
-
   helmfile-deploy:
     name: Helmfile Apply (Velero + Monitoring + Kubecost)
     needs: argocd-sync
@@ -214,11 +213,7 @@ jobs:
       - name: Configure kubecontext
         run: |
           echo "$KUBECONFIG_B64" | base64 -d > kubeconfig.yaml
-          export KUBECONFIG=$(pwd)/kubeconfig.yaml
-          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }} --kubeconfig $KUBECONFIG || true
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
 
       - name: Add required Helm repos
@@ -229,12 +224,10 @@ jobs:
 
       - name: Extract & Apply Velero CRDs from Helm chart
         env:
-          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig.yaml
         run: |
-          echo "$KUBECONFIG_B64" | base64 -d > kubeconfig.yaml
-          export KUBECONFIG=$(pwd)/kubeconfig.yaml
           helm pull vmware-tanzu/velero --version 5.0.2 --untar
-          kubectl get nodes  # validate access
+          kubectl get nodes
           kubectl apply -f velero/crds/ --validate=false
 
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
@@ -242,7 +235,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-          KUBECONFIG: $(pwd)/kubeconfig.yaml
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig.yaml
         run: |
           cd fullstack-app
           helmfile -e dev apply
