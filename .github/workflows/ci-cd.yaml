@@ -230,7 +230,11 @@ jobs:
       - name: Extract & Apply Velero CRDs from Helm chart
         run: |
           helm pull vmware-tanzu/velero --version 5.0.2 --untar
+          echo "${KUBECONFIG_B64}" | base64 -d > kubeconfig.yaml
+          export KUBECONFIG=$(pwd)/kubeconfig.yaml
           kubectl apply -f velero/crds/ --validate=false
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
 
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
         env:
