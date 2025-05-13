@@ -5,7 +5,8 @@ environments:
       - values/secrets.enc.yaml
       - values/velero-values.yaml
       - values/kube-prometheus-values.yaml
-      - values/kubecost-values.yaml  # Optional: needed if env-specific override is used
+      - values/kubecost-values.yaml
+      - values/robusta-values.yaml
 
 ---
 releases:
@@ -39,4 +40,12 @@ releases:
     version: 0.1.2
     values:
       - values/kubecost-values.yaml
+
+  - name: robusta
+    namespace: robusta
+    createNamespace: true
+    chart: robusta/robusta
+    version: 0.10.6
+    values:
+      - values/robusta-values.yaml
 
