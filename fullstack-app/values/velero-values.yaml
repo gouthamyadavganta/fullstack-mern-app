@@ -2,7 +2,7 @@ configuration:
   backupStorageLocations:
     - name: default
       provider: aws
-      bucket: fullstack-mern-velero-backups
+      bucket: {{ .Env.VELERO_BUCKET }}
       config:
         region: us-east-2
 
@@ -17,5 +17,6 @@ credentials:
   secretContents:
     cloud: |
       [default]
-      aws_access_key_id = {{ .Values.aws.accessKeyId }}
-      aws_secret_access_key = {{ .Values.aws.secretAccessKey }}
+      aws_access_key_id = {{ .Env.AWS_ACCESS_KEY_ID }}
+      aws_secret_access_key = {{ .Env.AWS_SECRET_ACCESS_KEY }}
+

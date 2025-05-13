@@ -241,6 +241,9 @@ jobs:
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          VELERO_BUCKET: ${{ secrets.VELERO_BUCKET }}
         run: |
           cd fullstack-app
           echo "Running helmfile apply..."
