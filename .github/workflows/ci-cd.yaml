@@ -191,6 +191,7 @@ jobs:
     name: Helmfile Apply (Velero + Monitoring + Kubecost)
     needs: argocd-sync
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -203,7 +204,6 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Generate kubeconfig
-        shell: bash
         run: |
           echo "Generating kubeconfig..."
           aws eks update-kubeconfig \
@@ -211,11 +211,13 @@ jobs:
             --region "${{ env.AWS_REGION }}"
           kubectl get nodes
 
-      - name: Setup Helm and Helmfile
+      - name: Setup Helm & Helmfile
         run: |
           echo "Installing Helmfile..."
-          curl -sSL -o helmfile https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_0.156.0_linux_amd64
-          chmod +x helmfile && sudo mv helmfile /usr/local/bin/helmfile
+          curl -sSL -o helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_0.156.0_linux_amd64.tar.gz
+          tar -xzf helmfile.tar.gz
+          chmod +x helmfile
+          sudo mv helmfile /usr/local/bin/helmfile
           helm plugin install https://github.com/databus23/helm-diff || true
 
       - name: Install SOPS + age
@@ -225,15 +227,14 @@ jobs:
           curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
           chmod +x sops && sudo mv sops /usr/local/bin/sops
 
-      - name: Add Helm repos
+      - name: Add required Helm repos
         run: |
           helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
 
-      - name: Pull Velero chart and install CRDs
+      - name: Extract & Apply Velero CRDs from Helm chart
         run: |
-          echo "Pulling Velero Helm chart and applying CRDs..."
           helm pull vmware-tanzu/velero --version 5.0.2 --untar
           kubectl apply -f velero/crds/ --validate=false
 
