@@ -223,7 +223,7 @@ jobs:
 
       - name: Apply Velero CRDs (static YAML)
         run: |
-          curl -sSL -o velero-crds.yaml https://raw.githubusercontent.com/vmware-tanzu/velero/release-1.12/config/crd/crds.yaml
+          curl -sSL -o velero-crds.yaml https://your-hosted-location/velero-v1.12.4-crds.yaml
           kubectl apply -f velero-crds.yaml --validate=false
 
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
