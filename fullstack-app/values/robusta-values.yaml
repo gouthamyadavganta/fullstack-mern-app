@@ -1,4 +1,4 @@
-clusterName: {{ requiredEnv "CLUSTER_NAME" }}
+clusterName: "REPLACE_ME"
 
 globalConfig:
   signing_key: ""
