@@ -2,7 +2,7 @@ configuration:
   backupStorageLocations:
     - name: default
       provider: aws
-      bucket: {{ .Env.VELERO_BUCKET }}
+      bucket: "{{ .Env.VELERO_BUCKET }}"
       config:
         region: us-east-2
 
