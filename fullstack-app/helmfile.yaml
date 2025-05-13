@@ -5,6 +5,8 @@ environments:
       - values/secrets.enc.yaml
       - values/velero-values.yaml
       - values/kube-prometheus-values.yaml
+      - values/kubecost-values.yaml  # Optional: needed if env-specific override is used
+
 ---
 releases:
   - name: server
@@ -36,4 +38,5 @@ releases:
     chart: prometheus-community/kubectl-cost
     version: 0.1.2
     values:
-      - replicas: 1
+      - values/kubecost-values.yaml
+

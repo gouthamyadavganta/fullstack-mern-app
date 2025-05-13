@@ -1,0 +1,14 @@
+kubecostModel:
+  cloudProvider: "custom"
+  projectID: "kubecost-project"
+  clusterName: "devops-eks-cluster"
+
+global:
+  prometheus:
+    fqdn: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local
+
+networkCosts:
+  enabled: false
+
+serviceAccount:
+  create: true
