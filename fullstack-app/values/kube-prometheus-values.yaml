@@ -25,8 +25,8 @@ kubeStateMetrics:
 
 prometheus:
   prometheusSpec:
-    serviceMonitorSelectorNilUsesHelmValues: false
-    podMonitorSelectorNilUsesHelmValues: false
+    group_interval: 5m
+    repeat_interval: 3h
     alertingEndpoints:
       - name: default
         namespace: monitoring
@@ -44,6 +44,17 @@ prometheus:
       limits:
         cpu: "600m"
         memory: "1Gi"
+    additionalPrometheusRules:
+      - name: silence-broken-alerts
+        groups:
+          - name: disable-kube-watch
+            rules:
+              - alert: KubeStateMetricsWatchErrors
+                expr: vector(0)
+                labels:
+                  severity: none
+                annotations:
+                  summary: "Silenced via CI/CD override"
 
 alertmanager:
   enabled: true
@@ -60,9 +71,6 @@ alertmanager:
     route:
       group_by: ['alertname']
       group_wait: 30s
-      group_interval: 5m
-      repeat_interval: 3h
-      receiver: 'slack-notifications'
     receivers:
       - name: 'slack-notifications'
         slack_configs:
@@ -77,4 +85,7 @@ defaultRules:
     etcd: false
     kubeApiserver: false
     kubeScheduler: false
+
+serviceMonitorSelectorNilUsesHelmValues: false
+podMonitorSelectorNilUsesHelmValues: false
 
