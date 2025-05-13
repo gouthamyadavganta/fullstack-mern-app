@@ -8,7 +8,6 @@ environments:
       - values/kubecost-values.yaml
       - values/robusta-values.yaml
 
----
 releases:
   - name: server
     namespace: fullstack
@@ -37,7 +36,7 @@ releases:
     namespace: monitoring
     createNamespace: false
     chart: prometheus-community/kubectl-cost
-    version: 0.1.2
+    version: 1.107.1
     values:
       - values/kubecost-values.yaml
 
@@ -48,4 +47,5 @@ releases:
     version: 0.10.6
     values:
       - values/robusta-values.yaml
+
 
