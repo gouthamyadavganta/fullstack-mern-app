@@ -1,4 +1,3 @@
-clusterName: "REPLACE_ME"
 
 globalConfig:
   signing_key: ""
@@ -10,7 +9,7 @@ sinksConfig:
   - sink_type: "slack"
     name: "main-slack"
     slack_channel: "#alerts"
-    slack_token: "https://hooks.slack.com/services/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"
+    slack_webhook: "https://hooks.slack.com/services/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"
 
 runner:
   sendAdditionalTelemetry: false

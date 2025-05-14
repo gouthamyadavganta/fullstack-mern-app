@@ -37,6 +37,8 @@ prometheus:
       - "--web.enable-admin-api"
       - "--storage.tsdb.max-block-duration=2h"
       - "--storage.tsdb.retention.time=7d"
+      - "--scrape.sample-limit=100000"
+      - "--scrape.body-size-limit=10MB"
     resources:
       requests:
         cpu: "300m"
@@ -55,6 +57,27 @@ prometheus:
                   severity: none
                 annotations:
                   summary: "Silenced via CI/CD override"
+              - alert: PrometheusRemoteStorageFailures
+                expr: vector(0)
+                labels:
+                  severity: none
+                annotations:
+                  summary: "Silenced: remote_write not in use"
+
+prometheusRule:
+  enabled: true
+
+ruleSelector:
+  matchLabels:
+    release: kps
+
+defaultRules:
+  create: true
+  rules:
+    etcd: false
+    kubeApiserver: false
+    kubeScheduler: false
+    prometheus: false  # disables alerts like RemoteStorageFailures at the source
 
 alertmanager:
   enabled: true
@@ -78,13 +101,6 @@ alertmanager:
             channel: '#alerts'
             username: 'prometheus'
             api_url: 'https://hooks.slack.com/services/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'
-
-defaultRules:
-  create: true
-  rules:
-    etcd: false
-    kubeApiserver: false
-    kubeScheduler: false
 
 serviceMonitorSelectorNilUsesHelmValues: false
 podMonitorSelectorNilUsesHelmValues: false

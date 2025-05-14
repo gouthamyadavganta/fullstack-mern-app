@@ -1,3 +1,18 @@
+helmDefaults:
+  wait: true
+  timeout: 600
+  atomic: true
+
+repositories:
+  - name: vmware-tanzu
+    url: https://vmware-tanzu.github.io/helm-charts
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: robusta
+    url: https://robusta-charts.storage.googleapis.com
+  - name: kubecost
+    url: https://kubecost.github.io/cost-analyzer
+
 environments:
   dev:
     values:
@@ -7,6 +22,7 @@ environments:
       - values/kube-prometheus-values.yaml
       - values/kubecost-values.yaml
       - values/robusta-values.yaml
+
 ---
 releases:
   - name: server
@@ -48,4 +64,4 @@ releases:
     values:
       - values/robusta-values.yaml
       - clusterName: {{ requiredEnv "CLUSTER_NAME" }}
-        
+
