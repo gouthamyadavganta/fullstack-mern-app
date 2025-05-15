@@ -1,7 +1,6 @@
 kubecostModel:
   cloudProvider: "custom"
   projectID: "kubecost-project"
-  clusterName: "devops-eks-cluster"
 
 global:
   prometheus:
@@ -12,3 +11,13 @@ networkCosts:
 
 serviceAccount:
   create: true
+
+grafana:
+  enabled: false
+  sidecar:
+    dashboards:
+      enabled: false
+
+dashboards:
+  enabled: false
+

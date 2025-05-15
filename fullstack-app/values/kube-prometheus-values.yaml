@@ -1,16 +1,17 @@
 grafana:
+  enabled: true
   adminPassword: prom-operator
   service:
     type: LoadBalancer
+  defaultDashboardsEnabled: false              # 🔴 disable built-in dashboards
   sidecar:
     dashboards:
-      enabled: true
+      enabled: false                           # 🔴 disable auto-import from configmaps
       label: grafana_dashboard
       folder: /var/lib/grafana/dashboards/custom
-  dashboards:
-    default:
-      kubecost-dashboard:
-        file: /var/lib/grafana/dashboards/custom/kubecost-dashboard.json
+  dashboards: {}                                # 🔴 clears out all default dashboards
+  dashboardsConfigMaps: {}                      # 🔴 disables dashboard injection via Helm values
+  additionalDataSources: []                     # optional: prevents Helm from injecting datasources
 
 kubeStateMetrics:
   rbac:
@@ -32,13 +33,13 @@ prometheus:
         namespace: monitoring
         port: web
     additionalArgs:
-      - "--web.enable-lifecycle"
-      - "--web.max-connections=512"
-      - "--web.enable-admin-api"
-      - "--storage.tsdb.max-block-duration=2h"
-      - "--storage.tsdb.retention.time=7d"
-      - "--scrape.sample-limit=100000"
-      - "--scrape.body-size-limit=10MB"
+      - --web.enable-lifecycle
+      - --web.max-connections=512
+      - --web.enable-admin-api
+      - --storage.tsdb.max-block-duration=2h
+      - --storage.tsdb.retention.time=7d
+      - --scrape.sample-limit=100000
+      - --scrape.body-size-limit=10MB
     resources:
       requests:
         cpu: "300m"
@@ -66,10 +67,9 @@ prometheus:
 
 prometheusRule:
   enabled: true
-
-ruleSelector:
-  matchLabels:
-    release: kps
+  ruleSelector:
+    matchLabels:
+      release: kps
 
 defaultRules:
   create: true
@@ -77,7 +77,7 @@ defaultRules:
     etcd: false
     kubeApiserver: false
     kubeScheduler: false
-    prometheus: false  # disables alerts like RemoteStorageFailures at the source
+    prometheus: false
 
 alertmanager:
   enabled: true

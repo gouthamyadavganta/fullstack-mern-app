@@ -1,9 +1,14 @@
-
 globalConfig:
   signing_key: ""
 
 prometheus:
-  enabled: false  # already using kube-prometheus-stack
+  enabled: false  # Already using kube-prometheus-stack
+
+grafanaDashboards:
+  create: false   # 🔴 Disable Robusta’s dashboard injection (prevents ${datasource} errors)
+
+grafanaRenderer:
+  enabled: false  # 🔴 Disable Robusta's PDF/renderer service (not needed)
 
 sinksConfig:
   - sink_type: "slack"
@@ -16,4 +21,5 @@ runner:
   extraEnvVars:
     - name: ROBUSTA_DISABLE_TELEMETRY
       value: "true"
+
 

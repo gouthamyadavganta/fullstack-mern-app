@@ -24,6 +24,7 @@ environments:
       - values/robusta-values.yaml
 
 ---
+
 releases:
   - name: server
     namespace: fullstack
@@ -48,13 +49,14 @@ releases:
     values:
       - values/kube-prometheus-values.yaml
 
-  - name: kubectl-cost
+  - name: kubecost
     namespace: monitoring
     createNamespace: false
     chart: kubecost/cost-analyzer
     version: 1.107.0
     values:
       - values/kubecost-values.yaml
+      - clusterName: {{ requiredEnv "EKS_CLUSTER_NAME" }}
 
   - name: robusta
     namespace: robusta
