@@ -235,7 +235,6 @@ jobs:
 
       - name: Argo CD Sync with Auth Token
         run: |
-          ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
 
           # 🔐 Login first
           argocd login $ARGOCD_SERVER:443 \
