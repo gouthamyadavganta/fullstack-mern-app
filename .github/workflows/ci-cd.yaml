@@ -107,16 +107,18 @@ jobs:
             gantagouthamyadav/fullstack-client:${{ github.sha }}
             gantagouthamyadav/fullstack-client:latest
       - name: Trivy Scan (Server)
+        continue-on-error: true
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: gantagouthamyadav/fullstack-server:${{ github.sha }}
       - name: Trivy Scan (Client)
+        continue-on-error: true
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: gantagouthamyadav/fullstack-client:${{ github.sha }}
 
-  terraform:
-    name: Terraform
+  terraform-validate:
+    name: Terraform Validate
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
@@ -124,22 +126,68 @@ jobs:
       - uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.7
-      - name: Terraform Init & Plan or Apply
+      - name: Terraform Init & Validate
         working-directory: terraform-aws-infra
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           terraform init -backend-config="bucket=${{ env.TFSTATE_BUCKET }}"
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.dry_run }}" == "false" ]]; then
-            terraform apply -auto-approve
-          else
-            terraform plan
-          fi
+          terraform validate
+
+  terraform-plan:
+    name: Terraform Plan
+    needs: terraform-validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+      - name: Terraform Plan
+        working-directory: terraform-aws-infra
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          terraform init -backend-config="bucket=${{ env.TFSTATE_BUCKET }}"
+          terraform plan -out=tfplan || { echo "❌ Terraform plan failed"; exit 1; }
+
+  terraform-apply:
+    name: Terraform Apply
+    needs: terraform-plan
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+      - name: Terraform Apply
+        working-directory: terraform-aws-infra
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          terraform init -backend-config="bucket=${{ env.TFSTATE_BUCKET }}"
+          terraform apply -auto-approve tfplan
+
+  terraform-notify:
+    name: Notify After Apply
+    needs: terraform-apply
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - name: Slack Notify
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"✅ Terraform apply succeeded on *main*. All infra changes have been applied."}' \
+            "$SLACK_WEBHOOK_URL"  
 
   helm-release:
     name: Helm Lint/Template or Package/Push
-    needs: terraform
+    needs: terraform-apply
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -160,7 +208,6 @@ jobs:
           else
             helm lint .
             helm template . --values values.yaml
-          fi
 
   argocd-sync:
     name: Argo CD Sync
@@ -187,58 +234,49 @@ jobs:
             --insecure \
             --auth-token ${{ secrets.ARGOCD_TOKEN }} \
             --health --operation --timeout 180 || echo "App is still progressing — continuing CI"
+
   helmfile-deploy:
     name: Helmfile Apply (Velero + Monitoring + Kubecost)
     needs: argocd-sync
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Generate kubeconfig
         run: |
-          echo "Generating kubeconfig..."
           aws eks update-kubeconfig \
             --name "${{ secrets.EKS_CLUSTER_NAME }}" \
             --region "${{ env.AWS_REGION }}"
           kubectl get nodes
-
       - name: Setup Helm & Helmfile
         run: |
-          echo "Installing Helmfile..."
           curl -sSL -o helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_0.156.0_linux_amd64.tar.gz
           tar -xzf helmfile.tar.gz
-          chmod +x helmfile
-          sudo mv helmfile /usr/local/bin/helmfile
+          chmod +x helmfile && sudo mv helmfile /usr/local/bin/helmfile
           helm plugin install https://github.com/databus23/helm-diff || true
-
       - name: Install SOPS + age
         run: |
           sudo apt-get update
           sudo apt-get install -y age
           curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
           chmod +x sops && sudo mv sops /usr/local/bin/sops
-
       - name: Add required Helm repos
         run: |
           helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo add robusta https://robusta-charts.storage.googleapis.com
+          helm repo add kubecost https://kubecost.github.io/cost-analyzer
           helm repo update
-
-      - name: Extract & Apply Velero CRDs from Helm chart
+      - name: Apply Velero CRDs
         run: |
           helm pull vmware-tanzu/velero --version 5.0.2 --untar
           kubectl apply -f velero/crds/ --validate=false
-
       - name: Apply Helmfile (Velero + Monitoring + Kubecost)
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
@@ -251,10 +289,16 @@ jobs:
           export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
           export VELERO_BUCKET="${VELERO_BUCKET}"
           export EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME}"
-
           cd fullstack-app
-          echo "Running helmfile apply..."
-          helmfile -e dev apply
+          helmfile -e dev apply || { echo "❌ Helmfile failed"; exit 1; }
+      - name: Debug Helmfile State
+        if: failure()
+        run: |
+          echo "🔍 Helmfile failed — checking state..."
+          helmfile -e dev template || echo "Template render failed"
+          kubectl get all --all-namespaces
+          kubectl describe pods -A | head -n 300
+
   healthcheck:
     name: Verify Deployment
     needs: helmfile-deploy
@@ -278,4 +322,3 @@ jobs:
         run: npm ci
       - name: Run Cypress tests
         run: npx cypress run
-

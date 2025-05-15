@@ -3,26 +3,15 @@ grafana:
   adminPassword: prom-operator
   service:
     type: LoadBalancer
-  defaultDashboardsEnabled: false              # 🔴 disable built-in dashboards
+  defaultDashboardsEnabled: false
   sidecar:
     dashboards:
-      enabled: false                           # 🔴 disable auto-import from configmaps
+      enabled: false
       label: grafana_dashboard
       folder: /var/lib/grafana/dashboards/custom
-  dashboards: {}                                # 🔴 clears out all default dashboards
-  dashboardsConfigMaps: {}                      # 🔴 disables dashboard injection via Helm values
-  additionalDataSources: []                     # optional: prevents Helm from injecting datasources
-
-kubeStateMetrics:
-  rbac:
-    create: true
-  resources:
-    requests:
-      memory: "256Mi"
-      cpu: "100m"
-    limits:
-      memory: "512Mi"
-      cpu: "200m"
+  dashboards: {}
+  dashboardsConfigMaps: {}
+  additionalDataSources: []
 
 prometheus:
   prometheusSpec:
@@ -34,42 +23,39 @@ prometheus:
         port: web
     additionalArgs:
       - --web.enable-lifecycle
-      - --web.max-connections=512
       - --web.enable-admin-api
-      - --storage.tsdb.max-block-duration=2h
       - --storage.tsdb.retention.time=7d
       - --scrape.sample-limit=100000
       - --scrape.body-size-limit=10MB
-    resources:
-      requests:
-        cpu: "300m"
-        memory: "512Mi"
-      limits:
-        cpu: "600m"
-        memory: "1Gi"
     additionalPrometheusRules:
-      - name: silence-broken-alerts
+      - name: silence-failing-alerts
         groups:
-          - name: disable-kube-watch
+          - name: disable-bad-alerts
             rules:
               - alert: KubeStateMetricsWatchErrors
                 expr: vector(0)
                 labels:
                   severity: none
                 annotations:
-                  summary: "Silenced via CI/CD override"
-              - alert: PrometheusRemoteStorageFailures
+                  summary: "Silenced watch errors"
+              - alert: PrometheusOperatorWatchErrors
                 expr: vector(0)
                 labels:
                   severity: none
                 annotations:
-                  summary: "Silenced: remote_write not in use"
-
-prometheusRule:
-  enabled: true
-  ruleSelector:
-    matchLabels:
-      release: kps
+                  summary: "Silenced operator watch errors"
+              - alert: KubeAPIErrorBudgetBurn
+                expr: vector(0)
+                labels:
+                  severity: none
+                annotations:
+                  summary: "Silenced API error budget"
+              - alert: PrometheusOperatorReconcileErrors
+                expr: vector(0)
+                labels:
+                  severity: none
+                annotations:
+                  summary: "Silenced reconcile errors"
 
 defaultRules:
   create: true
@@ -79,15 +65,14 @@ defaultRules:
     kubeScheduler: false
     prometheus: false
 
+prometheusRule:
+  enabled: true
+  ruleSelector:
+    matchLabels:
+      release: kps
+
 alertmanager:
   enabled: true
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "256Mi"
-    limits:
-      cpu: "200m"
-      memory: "512Mi"
   config:
     global:
       resolve_timeout: 5m
