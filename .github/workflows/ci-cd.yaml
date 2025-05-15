@@ -222,41 +222,41 @@ jobs:
           fi
 
   argocd-sync:
-  name: Argo CD Sync
-  needs: helm-release
-  runs-on: ubuntu-latest
-  if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
-  steps:
-    - name: Install Argo CD CLI
-      run: |
-        curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
-        chmod +x argocd
-        sudo mv argocd /usr/local/bin/argocd
+    name: Argo CD Sync
+    needs: helm-release
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
+    steps:
+      - name: Install Argo CD CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
+          chmod +x argocd
+          sudo mv argocd /usr/local/bin/argocd
 
-    - name: Argo CD Sync with Auth Token
-      run: |
-        ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
+      - name: Argo CD Sync with Auth Token
+        run: |
+          ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER }}
 
-        # 🔐 Login first
-        argocd login $ARGOCD_SERVER:443 \
-          --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-          --grpc-web \
-          --insecure
+          # 🔐 Login first
+          argocd login $ARGOCD_SERVER:443 \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+            --grpc-web \
+            --insecure
 
-        # 🔄 Sync app
-        argocd app sync fullstack-app \
-          --server $ARGOCD_SERVER:443 \
-          --grpc-web \
-          --insecure \
-          --auth-token ${{ secrets.ARGOCD_TOKEN }}
+          # 🔄 Sync app
+          argocd app sync fullstack-app \
+            --server $ARGOCD_SERVER:443 \
+            --grpc-web \
+            --insecure \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }}
 
-        # ✅ Wait for health
-        argocd app wait fullstack-app \
-          --server $ARGOCD_SERVER:443 \
-          --grpc-web \
-          --insecure \
-          --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-          --health --operation --timeout 180 || echo "App is still progressing — continuing CI"
+          # ✅ Wait for health
+          argocd app wait fullstack-app \
+            --server $ARGOCD_SERVER:443 \
+            --grpc-web \
+            --insecure \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+            --health --operation --timeout 180 || echo "App is still progressing — continuing CI"
 
   helmfile-deploy:
     name: Helmfile Apply (Velero + Monitoring + Kubecost)
