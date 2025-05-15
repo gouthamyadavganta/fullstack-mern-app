@@ -85,7 +85,7 @@ alertmanager:
           - send_resolved: true
             channel: '#alerts'
             username: 'prometheus'
-            api_url: 'https://hooks.slack.com/services/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'
+            api_url: "{{ .Values.slack.webhook }}"
 
 serviceMonitorSelectorNilUsesHelmValues: false
 podMonitorSelectorNilUsesHelmValues: false

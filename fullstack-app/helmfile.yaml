@@ -16,6 +16,7 @@ repositories:
 environments:
   dev:
     values:
+
       - values/dev-values.yaml
       - values/secrets.enc.yaml
       - values/velero-values.yaml
@@ -48,6 +49,8 @@ releases:
     version: 58.5.0
     values:
       - values/kube-prometheus-values.yaml
+      - slack:
+          webhook: {{ requiredEnv "SLACK_WEBHOOK_URL" }}
 
   - name: kubecost
     namespace: monitoring

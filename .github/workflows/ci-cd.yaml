@@ -219,6 +219,7 @@ jobs:
           else
             helm lint .
             helm template . --values values.yaml
+          fi
 
   argocd-sync:
     name: Argo CD Sync
@@ -295,11 +296,13 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           VELERO_BUCKET: ${{ secrets.VELERO_BUCKET }}
           EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
           export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
           export VELERO_BUCKET="${VELERO_BUCKET}"
           export EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME}"
+          export SLACK_WEBHOOK_URL="${{ secrets.SLACK_WEBHOOK_URL }}"
           cd fullstack-app
           helmfile -e dev apply || { echo "❌ Helmfile failed"; exit 1; }
       - name: Debug Helmfile State
