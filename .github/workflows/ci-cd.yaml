@@ -235,27 +235,35 @@ jobs:
 
       - name: Argo CD Sync with Auth Token
         run: |
+          echo "🟡 [DEBUG] Argo CD Server: ${{ secrets.ARGOCD_SERVER }}"
+          echo "🟡 [DEBUG] Connecting to Argo CD at: http://${{ secrets.ARGOCD_SERVER }}:80"
+          echo "🟡 [DEBUG] Attempting Argo CD login..."
 
-          # 🔐 Login first
-          argocd login $ARGOCD_SERVER:443 \
+          argocd login ${{ secrets.ARGOCD_SERVER }}:80 \
             --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --grpc-web \
             --insecure
 
-          # 🔄 Sync app
+          echo "🟢 [DEBUG] Login succeeded. Starting app sync..."
+
           argocd app sync fullstack-app \
-            --server $ARGOCD_SERVER:443 \
-            --grpc-web \
+            --server ${{ secrets.ARGOCD_SERVER }}:80 \
             --insecure \
             --auth-token ${{ secrets.ARGOCD_TOKEN }}
 
-          # ✅ Wait for health
+          echo "🟢 [DEBUG] Sync triggered. Waiting for app to become healthy..."
+
           argocd app wait fullstack-app \
-            --server $ARGOCD_SERVER:443 \
-            --grpc-web \
+            --server ${{ secrets.ARGOCD_SERVER }}:80 \
             --insecure \
             --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --health --operation --timeout 180 || echo "App is still progressing — continuing CI"
+            --health --operation --timeout 180 || echo "⚠️ App is still progressing — continuing CI"
+
+      - name: Get Argo CD App Info (Post-Sync Debug)
+        run: |
+          argocd app get fullstack-app \
+            --server ${{ secrets.ARGOCD_SERVER }}:80 \
+            --insecure \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }}
 
   helmfile-deploy:
     name: Helmfile Apply (Velero + Monitoring + Kubecost)
