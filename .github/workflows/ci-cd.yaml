@@ -152,6 +152,11 @@ jobs:
         run: |
           terraform init -backend-config="bucket=${{ env.TFSTATE_BUCKET }}"
           terraform plan -out=tfplan || { echo "❌ Terraform plan failed"; exit 1; }
+      - name: Upload tfplan artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan
+          path: terraform-aws-infra/tfplan
 
   terraform-apply:
     name: Terraform Apply
@@ -163,6 +168,11 @@ jobs:
       - uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.7
+      - name: Download tfplan artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan
+          path: terraform-aws-infra
       - name: Terraform Apply
         working-directory: terraform-aws-infra
         env:
