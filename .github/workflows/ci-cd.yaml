@@ -241,20 +241,20 @@ jobs:
 
           argocd login ${{ secrets.ARGOCD_SERVER }}:80 \
             --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --insecure
+            --plaintext
 
           echo "🟢 [DEBUG] Login succeeded. Starting app sync..."
 
           argocd app sync fullstack-app \
             --server ${{ secrets.ARGOCD_SERVER }}:80 \
-            --insecure \
+            --plaintext \
             --auth-token ${{ secrets.ARGOCD_TOKEN }}
 
           echo "🟢 [DEBUG] Sync triggered. Waiting for app to become healthy..."
 
           argocd app wait fullstack-app \
             --server ${{ secrets.ARGOCD_SERVER }}:80 \
-            --insecure \
+            --plaintext \
             --auth-token ${{ secrets.ARGOCD_TOKEN }} \
             --health --operation --timeout 180 || echo "⚠️ App is still progressing — continuing CI"
 
@@ -262,7 +262,7 @@ jobs:
         run: |
           argocd app get fullstack-app \
             --server ${{ secrets.ARGOCD_SERVER }}:80 \
-            --insecure \
+            --plaintext \
             --auth-token ${{ secrets.ARGOCD_TOKEN }}
 
   helmfile-deploy:
