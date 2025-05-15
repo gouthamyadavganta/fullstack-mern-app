@@ -63,5 +63,5 @@ releases:
     version: 0.10.6
     values:
       - values/robusta-values.yaml
-      - clusterName: {{ requiredEnv "CLUSTER_NAME" }}
+      - clusterName: {{ requiredEnv "EKS_CLUSTER_NAME" }}
 
