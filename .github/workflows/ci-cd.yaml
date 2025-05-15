@@ -230,39 +230,34 @@ jobs:
       - name: Install Argo CD CLI
         run: |
           curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
-          chmod +x argocd
-          sudo mv argocd /usr/local/bin/argocd
+          chmod +x argocd && sudo mv argocd /usr/local/bin/argocd
 
-      - name: Argo CD Sync with Auth Token
+      - name: Argo CD Sync with Static Token (No Login)
         run: |
           echo "🟡 [DEBUG] Argo CD Server: ${{ secrets.ARGOCD_SERVER }}"
-          echo "🟡 [DEBUG] Connecting to Argo CD at: http://${{ secrets.ARGOCD_SERVER }}:80"
-          echo "🟡 [DEBUG] Attempting Argo CD login..."
-
-          argocd login ${{ secrets.ARGOCD_SERVER }}:80 \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --plaintext
-
-          echo "🟢 [DEBUG] Login succeeded. Starting app sync..."
+          echo "🟡 [DEBUG] Connecting with token..."
 
           argocd app sync fullstack-app \
-            --server ${{ secrets.ARGOCD_SERVER }}:80 \
-            --plaintext \
+            --server ${{ secrets.ARGOCD_SERVER }} \
+            --grpc-web \
+            --insecure \
             --auth-token ${{ secrets.ARGOCD_TOKEN }}
 
           echo "🟢 [DEBUG] Sync triggered. Waiting for app to become healthy..."
 
           argocd app wait fullstack-app \
-            --server ${{ secrets.ARGOCD_SERVER }}:80 \
-            --plaintext \
+            --server ${{ secrets.ARGOCD_SERVER }} \
+            --grpc-web \
+            --insecure \
             --auth-token ${{ secrets.ARGOCD_TOKEN }} \
             --health --operation --timeout 180 || echo "⚠️ App is still progressing — continuing CI"
 
       - name: Get Argo CD App Info (Post-Sync Debug)
         run: |
           argocd app get fullstack-app \
-            --server ${{ secrets.ARGOCD_SERVER }}:80 \
-            --plaintext \
+            --server ${{ secrets.ARGOCD_SERVER }} \
+            --grpc-web \
+            --insecure \
             --auth-token ${{ secrets.ARGOCD_TOKEN }}
 
   helmfile-deploy:
