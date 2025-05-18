@@ -232,29 +232,35 @@ jobs:
           curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
           chmod +x argocd && sudo mv argocd /usr/local/bin/argocd
 
-      - name: Argo CD Sync with Static Token (No Login)
+      - name: Login to Argo CD via CLI
         run: |
-          echo "🟡 [DEBUG] Argo CD Server: ${{ secrets.ARGOCD_SERVER }}"
-          echo "🟡 [DEBUG] Connecting with token..."
-
-          argocd app sync fullstack-app \
-            --server ${{ secrets.ARGOCD_SERVER }} \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+          echo "🔐 Logging into Argo CD via username/password..."
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --username ${{ secrets.ARGOCD_USERNAME }} \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --insecure \
             --grpc-web
 
-          echo "🟢 [DEBUG] Sync triggered. Waiting for app to become healthy..."
+      - name: Argo CD Sync App
+        run: |
+          echo "🚀 Syncing application fullstack-app..."
+          argocd app sync fullstack-app \
+            --server ${{ secrets.ARGOCD_SERVER }} \
+            --grpc-web
 
+      - name: Argo CD Wait for App
+        run: |
+          echo "⏳ Waiting for application to be Healthy and Synced..."
           argocd app wait fullstack-app \
             --server ${{ secrets.ARGOCD_SERVER }} \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
             --grpc-web \
-            --health --operation --timeout 180 || echo "⚠️ App is still progressing — continuing CI"
+            --health --operation --timeout 180 || echo "⚠️ App still progressing — continuing pipeline"
 
       - name: Get Argo CD App Info (Post-Sync Debug)
         run: |
+          echo "🔍 App Status:"
           argocd app get fullstack-app \
             --server ${{ secrets.ARGOCD_SERVER }} \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
             --grpc-web
 
   helmfile-deploy:
