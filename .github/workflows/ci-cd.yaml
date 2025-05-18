@@ -222,46 +222,51 @@ jobs:
           fi
 
   argocd-sync:
-    name: Argo CD Sync
+    name: Argo CD Sync (via REST API)
     needs: helm-release
     runs-on: ubuntu-latest
     if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
     steps:
-      - name: Install Argo CD CLI
+      - name: Sync Argo CD App using REST API
         run: |
-          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
-          chmod +x argocd && sudo mv argocd /usr/local/bin/argocd
+          echo "🔐 Logging in and syncing via Argo CD REST API..."
 
-      - name: Login to Argo CD via CLI
-        run: |
-          echo "🔐 Logging into Argo CD via username/password..."
-          argocd login ${{ secrets.ARGOCD_SERVER }} \
-            --username ${{ secrets.ARGOCD_USERNAME }} \
-            --password ${{ secrets.ARGOCD_PASSWORD }} \
-            --insecure \
-            --grpc-web
+          TOKEN=$(curl -sk -X POST "https://${{ secrets.ARGOCD_SERVER }}/api/v1/session" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"${{ secrets.ARGOCD_USERNAME }}\",\"password\":\"${{ secrets.ARGOCD_PASSWORD }}\"}" | jq -r .token)
 
-      - name: Argo CD Sync App
-        run: |
-          echo "🚀 Syncing application fullstack-app..."
-          argocd app sync fullstack-app \
-            --server ${{ secrets.ARGOCD_SERVER }} \
-            --grpc-web
+          if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+            echo "❌ Failed to get Argo CD token"
+            exit 1
+          fi
 
-      - name: Argo CD Wait for App
-        run: |
-          echo "⏳ Waiting for application to be Healthy and Synced..."
-          argocd app wait fullstack-app \
-            --server ${{ secrets.ARGOCD_SERVER }} \
-            --grpc-web \
-            --health --operation --timeout 180 || echo "⚠️ App still progressing — continuing pipeline"
+          echo "✅ Token received. Triggering sync..."
 
-      - name: Get Argo CD App Info (Post-Sync Debug)
-        run: |
-          echo "🔍 App Status:"
-          argocd app get fullstack-app \
-            --server ${{ secrets.ARGOCD_SERVER }} \
-            --grpc-web
+          curl -sk -X POST "https://${{ secrets.ARGOCD_SERVER }}/api/v1/applications/fullstack-app/sync" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json"
+
+          echo "⏳ Polling application status..."
+
+          for i in {1..30}; do
+            APP_JSON=$(curl -sk -H "Authorization: Bearer $TOKEN" \
+              "https://${{ secrets.ARGOCD_SERVER }}/api/v1/applications/fullstack-app")
+
+            HEALTH=$(echo "$APP_JSON" | jq -r '.status.health.status')
+            SYNCED=$(echo "$APP_JSON" | jq -r '.status.sync.status')
+
+            echo "🩺 Health: $HEALTH | Sync: $SYNCED"
+
+            if [[ "$HEALTH" == "Healthy" && "$SYNCED" == "Synced" ]]; then
+              echo "✅ App is Healthy and Synced"
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "❌ App did not become Healthy+Synced in time. Failing pipeline."
+          exit 1
 
   helmfile-deploy:
     name: Helmfile Apply (Velero + Monitoring + Kubecost)
