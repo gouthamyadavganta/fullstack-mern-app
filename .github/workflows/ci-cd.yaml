@@ -222,122 +222,122 @@ jobs:
           fi
 
   argocd-sync:
-  name: Argo CD Sync
-  needs: helm-release
-  runs-on: ubuntu-latest
-  if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
-  steps:
-    - name: Install Argo CD CLI
-      run: |
-        curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
-        chmod +x argocd
-        sudo mv argocd /usr/local/bin/argocd
+    name: Argo CD Sync
+    needs: helm-release
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
+    steps:
+      - name: Install Argo CD CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
+          chmod +x argocd
+          sudo mv argocd /usr/local/bin/argocd
 
-    - name: Sync Argo CD App
-      run: |
-        echo "🚀 Syncing Argo CD app..."
-        argocd app sync fullstack-app \
-          --server ${{ secrets.ARGOCD_SERVER }} \
-          --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-          --grpc-web \
-          --insecure || { echo '❌ Sync failed'; exit 1; }
+      - name: Sync Argo CD App
+        run: |
+          echo "🚀 Syncing Argo CD app..."
+          argocd app sync fullstack-app \
+            --server ${{ secrets.ARGOCD_SERVER }} \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+            --grpc-web \
+            --insecure || { echo '❌ Sync failed'; exit 1; }
 
-    - name: Wait for Argo CD App Health
-      run: |
-        echo "⏳ Waiting for app to become Healthy and Synced..."
-        argocd app wait fullstack-app \
-          --server ${{ secrets.ARGOCD_SERVER }} \
-          --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-          --grpc-web \
-          --insecure \
-          --health --operation --timeout 180 || { echo '❌ App did not become Healthy'; exit 1; }
+      - name: Wait for Argo CD App Health
+        run: |
+          echo "⏳ Waiting for app to become Healthy and Synced..."
+          argocd app wait fullstack-app \
+            --server ${{ secrets.ARGOCD_SERVER }} \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+            --grpc-web \
+            --insecure \
+            --health --operation --timeout 180 || { echo '❌ App did not become Healthy'; exit 1; }
 
-    - name: Get Argo CD App Info
-      run: |
-        argocd app get fullstack-app \
-          --server ${{ secrets.ARGOCD_SERVER }} \
-          --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-          --grpc-web \
-          --insecure
+      - name: Get Argo CD App Info
+        run: |
+          argocd app get fullstack-app \
+            --server ${{ secrets.ARGOCD_SERVER }} \
+            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+            --grpc-web \
+            --insecure
 
   helmfile-deploy:
-  name: Helmfile Apply (Velero + Monitoring + Kubecost)
-  needs: argocd-sync
-  runs-on: ubuntu-latest
-  steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+    name: Helmfile Apply (Velero + Monitoring + Kubecost)
+    needs: argocd-sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Generate kubeconfig
-      run: |
-        aws eks update-kubeconfig \
-          --name "${{ secrets.EKS_CLUSTER_NAME }}" \
-          --region "${{ env.AWS_REGION }}"
-        kubectl get nodes
+      - name: Generate kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name "${{ secrets.EKS_CLUSTER_NAME }}" \
+            --region "${{ env.AWS_REGION }}"
+          kubectl get nodes
 
-    - name: Setup Helm & Helmfile
-      run: |
-        curl -sSL -o helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_0.156.0_linux_amd64.tar.gz
-        tar -xzf helmfile.tar.gz
-        chmod +x helmfile && sudo mv helmfile /usr/local/bin/helmfile
-        helm plugin install https://github.com/databus23/helm-diff || true
+      - name: Setup Helm & Helmfile
+        run: |
+          curl -sSL -o helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_0.156.0_linux_amd64.tar.gz
+          tar -xzf helmfile.tar.gz
+          chmod +x helmfile && sudo mv helmfile /usr/local/bin/helmfile
+          helm plugin install https://github.com/databus23/helm-diff || true
 
-    - name: Install SOPS + age
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y age
-        curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
-        chmod +x sops && sudo mv sops /usr/local/bin/sops
+      - name: Install SOPS + age
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y age
+          curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
+          chmod +x sops && sudo mv sops /usr/local/bin/sops
 
-    - name: Add required Helm repos
-      run: |
-        helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
-        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-        helm repo add robusta https://robusta-charts.storage.googleapis.com
-        helm repo add kubecost https://kubecost.github.io/cost-analyzer
-        helm repo update
+      - name: Add required Helm repos
+        run: |
+          helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add robusta https://robusta-charts.storage.googleapis.com
+          helm repo add kubecost https://kubecost.github.io/cost-analyzer
+          helm repo update
 
-    - name: Apply Velero CRDs
-      run: |
-        helm pull vmware-tanzu/velero --version 5.0.2 --untar
-        kubectl apply -f velero/crds/ --validate=false
+      - name: Apply Velero CRDs
+        run: |
+          helm pull vmware-tanzu/velero --version 5.0.2 --untar
+          kubectl apply -f velero/crds/ --validate=false
 
-    - name: Apply Prometheus CRDs
-      run: |
-        helm pull prometheus-community/kube-prometheus-stack --version 58.5.0 --untar
-        kubectl apply -f kube-prometheus-stack/crds/ --validate=false
+      - name: Apply Prometheus CRDs
+        run: |
+          helm pull prometheus-community/kube-prometheus-stack --version 58.5.0 --untar
+          kubectl apply -f kube-prometheus-stack/crds/ --validate=false
 
-    - name: Apply Helmfile (Velero + Monitoring + Kubecost)
-      env:
-        SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        VELERO_BUCKET: ${{ secrets.VELERO_BUCKET }}
-        EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      run: |
-        export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
-        export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
-        export VELERO_BUCKET="${VELERO_BUCKET}"
-        export EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME}"
-        export SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL}"
-        cd fullstack-app
-        helmfile -e dev apply || { echo "❌ Helmfile failed"; exit 1; }
+      - name: Apply Helmfile (Velero + Monitoring + Kubecost)
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          VELERO_BUCKET: ${{ secrets.VELERO_BUCKET }}
+          EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+          export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+          export VELERO_BUCKET="${VELERO_BUCKET}"
+          export EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME}"
+          export SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL}"
+          cd fullstack-app
+          helmfile -e dev apply || { echo "❌ Helmfile failed"; exit 1; }
 
-    - name: Debug Helmfile State
-      if: failure()
-      run: |
-        echo "🔍 Helmfile failed — checking state..."
-        helmfile -e dev template || echo "Template render failed"
-        kubectl get all --all-namespaces
-        kubectl describe pods -A | head -n 300
+      - name: Debug Helmfile State
+        if: failure()
+        run: |
+          echo "🔍 Helmfile failed — checking state..."
+          helmfile -e dev template || echo "Template render failed"
+          kubectl get all --all-namespaces
+          kubectl describe pods -A | head -n 300
 
   healthcheck:
     name: Verify Deployment
