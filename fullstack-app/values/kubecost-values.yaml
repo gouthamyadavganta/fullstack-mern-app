@@ -1,23 +1,16 @@
-kubecostModel:
-  cloudProvider: "custom"
-  projectID: "kubecost-project"
-
 global:
+  grafana:
+    enabled: false
+
   prometheus:
-    fqdn: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local
+    fqdn: http://kube-prometheus-stack-prometheus.monitoring.svc
+
+kubecostModel:
+  enabled: true
 
 networkCosts:
-  enabled: false
+  enabled: true
 
-serviceAccount:
-  create: true
-
-grafana:
-  enabled: false
-  sidecar:
-    dashboards:
-      enabled: false
-
-dashboards:
-  enabled: false
+serviceMonitor:
+  enabled: true
 

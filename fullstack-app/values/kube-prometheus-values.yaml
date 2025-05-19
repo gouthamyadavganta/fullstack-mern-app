@@ -15,8 +15,8 @@ grafana:
 
 prometheus:
   prometheusSpec:
-    groupInterval: 5m
-    repeatInterval: 3h
+    group_interval: 5m
+    repeat_interval: 3h
     alertingEndpoints:
       - name: default
         namespace: monitoring
