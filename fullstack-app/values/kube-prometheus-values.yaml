@@ -15,47 +15,50 @@ grafana:
 
 prometheus:
   prometheusSpec:
-    group_interval: 5m
-    repeat_interval: 3h
+    groupInterval: 5m
+    repeatInterval: 3h
     alertingEndpoints:
       - name: default
         namespace: monitoring
         port: web
     additionalArgs:
-      - --web.enable-lifecycle
-      - --web.enable-admin-api
-      - --storage.tsdb.retention.time=7d
-      - --scrape.sample-limit=100000
-      - --scrape.body-size-limit=10MB
-    additionalPrometheusRules:
-      - name: silence-failing-alerts
-        groups:
-          - name: disable-bad-alerts
-            rules:
-              - alert: KubeStateMetricsWatchErrors
-                expr: vector(0)
-                labels:
-                  severity: none
-                annotations:
-                  summary: "Silenced watch errors"
-              - alert: PrometheusOperatorWatchErrors
-                expr: vector(0)
-                labels:
-                  severity: none
-                annotations:
-                  summary: "Silenced operator watch errors"
-              - alert: KubeAPIErrorBudgetBurn
-                expr: vector(0)
-                labels:
-                  severity: none
-                annotations:
-                  summary: "Silenced API error budget"
-              - alert: PrometheusOperatorReconcileErrors
-                expr: vector(0)
-                labels:
-                  severity: none
-                annotations:
-                  summary: "Silenced reconcile errors"
+      - name: web.enable-lifecycle
+      - name: web.enable-admin-api
+      - name: storage.tsdb.retention.time
+        value: 7d
+      - name: scrape.sample-limit
+        value: "100000"
+      - name: scrape.body-size-limit
+        value: 10MB
+  additionalPrometheusRules:
+    - name: silence-failing-alerts
+      groups:
+        - name: disable-bad-alerts
+          rules:
+            - alert: KubeStateMetricsWatchErrors
+              expr: vector(0)
+              labels:
+                severity: none
+              annotations:
+                summary: "Silenced watch errors"
+            - alert: PrometheusOperatorWatchErrors
+              expr: vector(0)
+              labels:
+                severity: none
+              annotations:
+                summary: "Silenced operator watch errors"
+            - alert: KubeAPIErrorBudgetBurn
+              expr: vector(0)
+              labels:
+                severity: none
+              annotations:
+                summary: "Silenced API error budget"
+            - alert: PrometheusOperatorReconcileErrors
+              expr: vector(0)
+              labels:
+                severity: none
+              annotations:
+                summary: "Silenced reconcile errors"
 
 defaultRules:
   create: true

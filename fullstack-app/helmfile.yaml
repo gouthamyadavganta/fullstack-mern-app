@@ -1,6 +1,6 @@
 helmDefaults:
   wait: true
-  timeout: 600
+  timeout: 900
   atomic: true
 
 repositories:
