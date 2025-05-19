@@ -218,6 +218,7 @@ jobs:
           else
             helm lint .
             helm template . --values values.yaml
+          fi
 
   helmfile-deploy:
     name: Helmfile Apply (Velero + Monitoring + Kubecost)
