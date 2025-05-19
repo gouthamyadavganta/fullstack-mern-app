@@ -261,8 +261,6 @@ jobs:
           kubectl apply -f velero/crds/ --validate=false
       - name: Install Prometheus Operator CRDs
         run: |
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo update
           helm install prometheus-crds prometheus-community/kube-prometheus-stack \
             --namespace monitoring \
             --create-namespace \
@@ -271,7 +269,7 @@ jobs:
             --set grafana.enabled=false \
             --set prometheus.enabled=false \
             --set alertmanager.enabled=false \
-            --set defaultRules.create=false 
+            --set defaultRules.create=false
       - name: Apply Helmfile
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
