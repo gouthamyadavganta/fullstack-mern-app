@@ -258,11 +258,7 @@ jobs:
       - name: Apply Velero CRDs
         run: |
           helm pull vmware-tanzu/velero --version 5.0.2 --untar
-          kubectl apply -f velero/crds/ --validate=false
-      - name: Apply Prometheus CRDs
-        run: |
-          helm pull prometheus-community/kube-prometheus-stack --version 58.5.0 --untar
-          kubectl apply -f kube-prometheus-stack/crds/ --validate=false
+          kubectl apply -f velero/crds/ --validate=false 
       - name: Apply Helmfile
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
