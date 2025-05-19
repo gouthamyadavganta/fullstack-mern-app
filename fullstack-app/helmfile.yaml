@@ -1,6 +1,6 @@
 helmDefaults:
   wait: true
-  timeout: 900
+  timeout: 1200
   atomic: true
 
 repositories:
@@ -34,6 +34,7 @@ releases:
     version: 5.0.2
     values:
       - values/velero-values.yaml
+      - installCRDs: true
 
   - name: kube-prometheus-stack
     namespace: monitoring
