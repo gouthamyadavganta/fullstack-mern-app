@@ -27,13 +27,6 @@ environments:
 ---
 
 releases:
-  - name: server
-    namespace: fullstack
-    chart: .
-    values:
-      - values/dev-values.yaml
-      - values/secrets.enc.yaml
-
   - name: velero
     namespace: velero
     createNamespace: true
@@ -50,7 +43,7 @@ releases:
     values:
       - values/kube-prometheus-values.yaml
       - slack:
-          webhook: {{ requiredEnv "SLACK_WEBHOOK_URL" }}
+          webhook: {{ .Values."SLACK_WEBHOOK_URL" }}
 
   - name: kubecost
     namespace: monitoring
@@ -59,7 +52,7 @@ releases:
     version: 1.107.0
     values:
       - values/kubecost-values.yaml
-      - clusterName: {{ requiredEnv "EKS_CLUSTER_NAME" }}
+      - clusterName: {{ .Values."EKS_CLUSTER_NAME" }}
 
   - name: robusta
     namespace: robusta
@@ -68,4 +61,4 @@ releases:
     version: 0.10.6
     values:
       - values/robusta-values.yaml
-      - clusterName: {{ requiredEnv "EKS_CLUSTER_NAME" }}
+      - clusterName: {{ .Values."EKS_CLUSTER_NAME" }}
