@@ -7,8 +7,7 @@ image:
 replicaCount: 1
 
 env:
-  - name: MONGO_URI
-    value: "mongodb://fullstack-app-mongo-mongodb.fullstack.svc.cluster.local:27017/mern-social"
+  MONGO_URI: "mongodb://fullstack-app-mongo-mongodb.fullstack.svc.cluster.local:27017/mern-social"
 
 mongodb:
   architecture: standalone
