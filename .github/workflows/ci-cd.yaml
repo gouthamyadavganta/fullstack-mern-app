@@ -264,8 +264,7 @@ jobs:
         run: |
           for app in fullstack-app prometheus velero kubecost robusta; do
             echo "⏳ Waiting on $app"
-            
-<meout 300 || exit 1
+            argocd app wait "$app" --server "${ARGOCD_SERVER}" --auth-token "${ARGOCD_TOKEN}" --grpc-web --insecure --health --operation --timeout 300 || exit 1  
           done
 
   healthcheck:
