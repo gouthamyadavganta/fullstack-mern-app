@@ -221,64 +221,64 @@ jobs:
           fi
 
   argocd-sync:
-  name: Argo CD Sync
-  needs: helm-release
-  runs-on: ubuntu-latest
-  if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
-  steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+    name: Argo CD Sync
+    needs: helm-release
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Generate kubeconfig for cluster
-      run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region ${{ env.AWS_REGION }}
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Generate kubeconfig for cluster
+        run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region ${{ env.AWS_REGION }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-    - name: Install Argo CD CLI
-      run: |
-        curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
-        chmod +x argocd && sudo mv argocd /usr/local/bin/argocd
+      - name: Install Argo CD CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
+          chmod +x argocd && sudo mv argocd /usr/local/bin/argocd
 
-    - name: Apply Argo CD Application YAMLs
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: kubectl apply -f argo-apps/
+      - name: Apply Argo CD Application YAMLs
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: kubectl apply -f argo-apps/
 
-    - name: Sync All Argo CD Apps
-      run: |
-        for app in fullstack-app prometheus velero kubecost robusta; do
-          echo "🔄 Syncing $app"
-          argocd app sync $app \
-            --server ${{ secrets.ARGOCD_SERVER }} \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --grpc-web \
-            --insecure || exit 1
-        done
+      - name: Sync All Argo CD Apps
+        run: |
+          for app in fullstack-app prometheus velero kubecost robusta; do
+            echo "🔄 Syncing $app"
+            argocd app sync $app \
+              --server ${{ secrets.ARGOCD_SERVER }} \
+              --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+              --grpc-web \
+              --insecure || exit 1
+          done
 
-    - name: Debug App Status (Before Wait)
-      run: |
-        for app in fullstack-app prometheus velero kubecost robusta; do
-          echo "📋 Status for $app"
-          argocd app get $app \
-            --server ${{ secrets.ARGOCD_SERVER }} \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --grpc-web \
-            --insecure || true
-        done
+      - name: Debug App Status (Before Wait)
+        run: |
+          for app in fullstack-app prometheus velero kubecost robusta; do
+            echo "📋 Status for $app"
+            argocd app get $app \
+              --server ${{ secrets.ARGOCD_SERVER }} \
+              --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+              --grpc-web \
+              --insecure || true
+          done
 
-    - name: Wait for All Apps to be Healthy
-      run: |
-        for app in fullstack-app prometheus velero kubecost robusta; do
-          echo "⏳ Waiting on $app"
-          argocd app wait $app \
-            --server ${{ secrets.ARGOCD_SERVER }} \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --grpc-web \
-            --insecure \
-            --health --operation --timeout 300 || exit 1
-        done
+      - name: Wait for All Apps to be Healthy
+        run: |
+          for app in fullstack-app prometheus velero kubecost robusta; do
+            echo "⏳ Waiting on $app"
+            argocd app wait $app \
+              --server ${{ secrets.ARGOCD_SERVER }} \
+              --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+              --grpc-web \
+              --insecure \
+              --health --operation --timeout 300 || exit 1
+          done
 
   healthcheck:
     name: Verify Deployment
