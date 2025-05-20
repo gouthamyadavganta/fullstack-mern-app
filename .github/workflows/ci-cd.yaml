@@ -250,34 +250,22 @@ jobs:
         run: |
           for app in fullstack-app prometheus velero kubecost robusta; do
             echo "🔄 Syncing $app"
-            argocd app sync $app \
-              --server ${{ secrets.ARGOCD_SERVER }} \
-              --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-              --grpc-web \
-              --insecure || exit 1
+            argocd app sync "$app" --server "${{ secrets.ARGOCD_SERVER }}" --auth-token "${{ secrets.ARGOCD_TOKEN }}" --grpc-web --insecure || exit 1
           done
 
       - name: Debug App Status (Before Wait)
         run: |
           for app in fullstack-app prometheus velero kubecost robusta; do
             echo "📋 Status for $app"
-            argocd app get $app \
-              --server ${{ secrets.ARGOCD_SERVER }} \
-              --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-              --grpc-web \
-              --insecure || true
+            argocd app get "$app" --server "${{ secrets.ARGOCD_SERVER }}" --auth-token "${{ secrets.ARGOCD_TOKEN }}" --grpc-web --insecure || true
           done
 
       - name: Wait for All Apps to be Healthy
         run: |
           for app in fullstack-app prometheus velero kubecost robusta; do
             echo "⏳ Waiting on $app"
-            argocd app wait $app \
-              --server ${{ secrets.ARGOCD_SERVER }} \
-              --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-              --grpc-web \
-              --insecure \
-              --health --operation --timeout 300 || exit 1
+            
+<meout 300 || exit 1
           done
 
   healthcheck:
