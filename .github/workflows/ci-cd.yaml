@@ -218,6 +218,7 @@ jobs:
           else
             helm lint .
             helm template . --values values/dev-values.yaml
+          fi
 
   argocd-sync:
     name: Argo CD Sync
