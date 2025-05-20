@@ -6,12 +6,30 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/gouthamyadavganta/fullstack-mern-app.git
-    targetRevision: HEAD
-    path: infra/velero
+    repoURL: https://vmware-tanzu.github.io/helm-charts
+    chart: velero
+    targetRevision: 6.0.0
     helm:
-      valueFiles:
-        - values.yaml
+      values: |
+        initContainers:
+          - name: velero-plugin-for-aws
+            image: velero/velero-plugin-for-aws:v1.8.2
+            volumeMounts:
+              - mountPath: /target
+                name: plugins
+        configuration:
+          provider: aws
+          backupStorageLocation:
+            - name: default
+              bucket: fullstack-mern-velero-backups
+              provider: aws
+              config:
+                region: us-east-2
+          volumeSnapshotLocation:
+            - name: default
+              provider: aws
+              config:
+                region: us-east-2
   destination:
     server: https://kubernetes.default.svc
     namespace: velero
@@ -21,3 +39,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+

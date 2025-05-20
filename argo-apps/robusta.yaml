@@ -6,12 +6,13 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/gouthamyadavganta/fullstack-mern-app.git
-    targetRevision: HEAD
-    path: infra/robusta
+    repoURL: https://robusta-charts.storage.googleapis.com
+    chart: robusta
+    targetRevision: 0.10.1
     helm:
-      valueFiles:
-        - values.yaml
+      values: |
+        clusterName: devops-eks-cluster
+        enablePrometheusStack: false
   destination:
     server: https://kubernetes.default.svc
     namespace: robusta
@@ -21,3 +22,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+

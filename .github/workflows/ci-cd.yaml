@@ -230,21 +230,39 @@ jobs:
         run: |
           curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
           chmod +x argocd && sudo mv argocd /usr/local/bin/argocd
-      - name: Sync Argo CD App
+      - name: Apply Argo CD Application YAMLs
+        run: kubectl apply -f argo-apps/
+      - name: Sync All Argo CD Apps
         run: |
-          argocd app sync fullstack-app \
-            --server ${{ secrets.ARGOCD_SERVER }} \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --grpc-web \ 
-            --insecure
-      - name: Wait for App Health
+          for app in fullstack-app prometheus velero kubecost robusta; do
+            echo "🔄 Syncing $app"
+            argocd app sync $app \
+              --server ${{ secrets.ARGOCD_SERVER }} \
+              --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+              --grpc-web \
+              --insecure || exit 1
+          done
+      - name: Debug App Status (Before Wait)
         run: |
-          argocd app wait fullstack-app \
-            --server ${{ secrets.ARGOCD_SERVER }} \
-            --auth-token ${{ secrets.ARGOCD_TOKEN }} \
-            --grpc-web \
-            --insecure \
-            --health --operation --timeout 180
+          for app in fullstack-app prometheus velero kubecost robusta; do
+            echo "📋 Status for $app"
+            argocd app get $app \
+              --server ${{ secrets.ARGOCD_SERVER }} \
+              --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+              --grpc-web \
+              --insecure || true
+          done
+      - name: Wait for All Apps to be Healthy
+        run: |
+          for app in fullstack-app prometheus velero kubecost robusta; do
+            echo "⏳ Waiting on $app"
+            argocd app wait $app \
+              --server ${{ secrets.ARGOCD_SERVER }} \
+              --auth-token ${{ secrets.ARGOCD_TOKEN }} \
+              --grpc-web \
+              --insecure \
+              --health --operation --timeout 300 || exit 1
+          done
 
   healthcheck:
     name: Verify Deployment
@@ -285,6 +303,12 @@ jobs:
           sudo apt-get update && sudo apt-get install -y age
           curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
           chmod +x sops && sudo mv sops /usr/local/bin/sops
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
       - name: Generate kubeconfig
         run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region ${{ env.AWS_REGION }}
       - name: Rollback with Helmfile
@@ -296,5 +320,5 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           cd fullstack-app
-          helmfile -e dev apply || echo "\u26a0\ufe0f Rollback failed"
+          helmfile -e dev apply || echo "\u26A0\uFE0F Rollback failed"
 
