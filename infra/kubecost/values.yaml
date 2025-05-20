@@ -1,0 +1,11 @@
+global:
+  grafana:
+    enabled: false    # Prometheus already handles Grafana
+  prometheus:
+    enabled: false    # Uses existing Prometheus stack
+
+kubecostFrontend:
+  enabled: true
+
+networkCosts:
+  enabled: true

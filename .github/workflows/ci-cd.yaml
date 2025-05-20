@@ -151,7 +151,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           terraform init -backend-config="bucket=${{ env.TFSTATE_BUCKET }}"
-          terraform plan -out=tfplan || { echo "❌ Terraform plan failed"; exit 1; }
+          terraform plan -out=tfplan || { echo "\u274c Terraform plan failed"; exit 1; }
       - name: Upload tfplan artifact
         uses: actions/upload-artifact@v4
         with:
@@ -192,7 +192,7 @@ jobs:
       - name: Slack Notify
         run: |
           curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"✅ Terraform apply succeeded on *main*. All infra changes have been applied."}' \
+            --data '{"text":"\u2705 Terraform apply succeeded on *main*. All infra changes have been applied."}' \
             "$SLACK_WEBHOOK_URL"
 
   helm-release:
@@ -217,74 +217,11 @@ jobs:
             aws s3 cp fullstack-app-0.1.${{ github.run_number }}.tgz s3://${{ env.CHART_BUCKET }}/
           else
             helm lint .
-            helm template . --values values.yaml
-          fi
-
-  helmfile-deploy:
-    name: Helmfile Apply (Velero + Monitoring + Kubecost)
-    needs: helm-release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Generate kubeconfig
-        run: |
-          aws eks update-kubeconfig \
-            --name "${{ secrets.EKS_CLUSTER_NAME }}" \
-            --region "${{ env.AWS_REGION }}"
-      - name: Setup Helm & Helmfile
-        run: |
-          curl -sSL -o helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_0.156.0_linux_amd64.tar.gz
-          tar -xzf helmfile.tar.gz
-          chmod +x helmfile && sudo mv helmfile /usr/local/bin/helmfile
-          helm plugin install https://github.com/databus23/helm-diff || true
-      - name: Install SOPS + age
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y age
-          curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
-          chmod +x sops && sudo mv sops /usr/local/bin/sops
-      - name: Add required Helm repos
-        run: |
-          helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo add robusta https://robusta-charts.storage.googleapis.com
-          helm repo add kubecost https://kubecost.github.io/cost-analyzer
-          helm repo update
-      - name: Apply Velero CRDs
-        run: |
-          helm pull vmware-tanzu/velero --version 5.0.2 --untar
-          kubectl apply -f velero/crds/ --validate=false
-      - name: Install Prometheus Operator CRDs
-        run: |
-          helm install prometheus-crds prometheus-community/kube-prometheus-stack \
-            --namespace monitoring \
-            --create-namespace \
-            --set prometheusOperator.enabled=true \
-            --set kubePrometheusStack.enabled=false \
-            --set grafana.enabled=false \
-            --set prometheus.enabled=false \
-            --set alertmanager.enabled=false \
-            --set defaultRules.create=false
-      - name: Apply Helmfile
-        env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          VELERO_BUCKET: ${{ secrets.VELERO_BUCKET }}
-          EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          cd fullstack-app
-          helmfile -e dev apply || { echo "❌ Helmfile failed"; exit 1; }
+            helm template . --values values/dev-values.yaml
 
   argocd-sync:
     name: Argo CD Sync
-    needs: helmfile-deploy
+    needs: helm-release
     runs-on: ubuntu-latest
     if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
     steps:
@@ -329,3 +266,32 @@ jobs:
         run: npm ci
       - name: Run Cypress tests
         run: npx cypress run
+
+  rollback-on-failure:
+    name: Helmfile Rollback on Failure
+    if: failure()
+    needs: [argocd-sync, healthcheck, cypress-e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Helmfile & SOPS
+        run: |
+          curl -sSL -o helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_0.156.0_linux_amd64.tar.gz
+          tar -xzf helmfile.tar.gz
+          chmod +x helmfile && sudo mv helmfile /usr/local/bin/helmfile
+          sudo apt-get update && sudo apt-get install -y age
+          curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
+          chmod +x sops && sudo mv sops /usr/local/bin/sops
+      - name: Generate kubeconfig
+        run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region ${{ env.AWS_REGION }}
+      - name: Rollback with Helmfile
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          VELERO_BUCKET: ${{ secrets.VELERO_BUCKET }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          cd fullstack-app
+          helmfile -e dev apply || echo "\u26a0\ufe0f Rollback failed"
+

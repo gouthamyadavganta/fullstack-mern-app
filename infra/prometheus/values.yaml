@@ -1,0 +1,21 @@
+grafana:
+  enabled: true
+
+prometheus:
+  enabled: true
+
+alertmanager:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+prometheusOperator:
+  enabled: true
+
+defaultRules:
+  create: true
+
+# Disable other exporters if not needed
+nodeExporter:
+  enabled: true

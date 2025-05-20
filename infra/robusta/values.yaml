@@ -1,0 +1,9 @@
+globalConfig:
+  clusterName: "{{ .Env.EKS_CLUSTER_NAME }}"
+
+slackSinkConfig:
+  - name: slack-alerts
+    slackChannel: "#alerts"
+    slackToken: "{{ .Env.SLACK_WEBHOOK_URL }}"
+
+enablePlatformPlaybooks: true

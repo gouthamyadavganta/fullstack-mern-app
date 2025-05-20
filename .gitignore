@@ -56,3 +56,7 @@ temp/
 
 .terraform/
 .vscode-server/
+
+# === Security & CI Files ===
+age-keys.txt
+kubeconfig-ci.b64

@@ -34,4 +34,3 @@ configuration:
       provider: aws
       config:
         region: us-east-2
-

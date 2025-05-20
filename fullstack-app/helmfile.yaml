@@ -1,65 +1,19 @@
 helmDefaults:
-  wait: true
-  timeout: 1200
   atomic: true
-
-repositories:
-  - name: vmware-tanzu
-    url: https://vmware-tanzu.github.io/helm-charts
-  - name: prometheus-community
-    url: https://prometheus-community.github.io/helm-charts
-  - name: robusta
-    url: https://robusta-charts.storage.googleapis.com
-  - name: kubecost
-    url: https://kubecost.github.io/cost-analyzer
+  wait: true
+  timeout: 600
 
 environments:
   dev:
     values:
-
       - values/dev-values.yaml
       - values/secrets.enc.yaml
-      - values/velero-values.yaml
-      - values/kube-prometheus-values.yaml
-      - values/kubecost-values.yaml
-      - values/robusta-values.yaml
-
----
 
 releases:
-  - name: velero
-    namespace: velero
-    createNamespace: true
-    chart: vmware-tanzu/velero
-    version: 5.0.2
+  - name: fullstack-app
+    namespace: fullstack
+    chart: ./
+    version: 0.1.0
     values:
-      - values/velero-values.yaml
-      - installCRDs: true
-
-  - name: kube-prometheus-stack
-    namespace: monitoring
-    createNamespace: true
-    chart: prometheus-community/kube-prometheus-stack
-    version: 58.5.0
-    values:
-      - values/kube-prometheus-values.yaml
-      - slack:
-          webhook: {{ .Values.SLACK_WEBHOOK_URL }}
-
-  - name: kubecost
-    namespace: monitoring
-    createNamespace: false
-    chart: kubecost/cost-analyzer
-    version: 1.107.0
-    values:
-      - values/kubecost-values.yaml
-      - clusterName: {{ .Values.EKS_CLUSTER_NAME }}
-
-  - name: robusta
-    namespace: robusta
-    createNamespace: true
-    chart: robusta/robusta
-    version: 0.10.6
-    values:
-      - values/robusta-values.yaml
-      - clusterName: {{ .Values.EKS_CLUSTER_NAME }}
+      - values/dev-values.yaml
+      - values/secrets.enc.yaml
