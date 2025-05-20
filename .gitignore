@@ -22,6 +22,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.tgz
+!fullstack-app/charts/mongodb-16.5.8.tgz
+
 .pnpm-debug.log
 
 # === Logs ===
