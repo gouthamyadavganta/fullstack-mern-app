@@ -23,11 +23,11 @@ spec:
         
           env:
             - name: MONGO_URI
-              value: "{{ .Values.server.mongo.uri }}"
+              value: {{ .Values.env.MONGO_URI | quote }}
             - name: MONGODB_URI
-              value: "{{ .Values.server.mongo.uri }}"
+              value: {{ .Values.env.MONGO_URI | quote }}
             - name: DB_URI
-              value: "{{ .Values.server.mongo.uri }}"
+              value: {{ .Values.env.MONGO_URI | quote }}
           resources:
             requests:
               cpu: "100m"

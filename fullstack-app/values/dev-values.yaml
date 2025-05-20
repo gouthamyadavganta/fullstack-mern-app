@@ -8,7 +8,7 @@ replicaCount: 1
 
 env:
   - name: MONGO_URI
-    value: {{ .Values.env.MONGO_URI | quote }}
+    value: "mongodb://fullstack-app-mongo-mongodb.fullstack.svc.cluster.local:27017/mern-social"
 
 mongodb:
   architecture: standalone
