@@ -8,15 +8,15 @@ spec:
   source:
     repoURL: https://kubecost.github.io/cost-analyzer/
     chart: cost-analyzer
-    targetRevision: 1.107.1  # or latest
+    targetRevision: 1.107.1
     helm:
       values: |
         global:
           prometheus:
-            enabled: false  # Use your Prometheus from infra
+            enabled: false  # Use your Prometheus from Argo apps
           grafana:
-            enabled: false  # Use your Grafana from infra
-        kubecostToken: your-kubecost-token-here
+            enabled: false  # Use your Grafana from Argo apps
+        kubecostToken: temp-token-disabled
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

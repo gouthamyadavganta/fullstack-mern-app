@@ -11,6 +11,8 @@ spec:
     targetRevision: 57.0.3
     helm:
       values: |
+        crds:
+          enabled: false
         grafana:
           enabled: true
         prometheus:
