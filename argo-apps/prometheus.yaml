@@ -1,3 +1,4 @@
+# argo-apps/prometheus.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -7,15 +8,20 @@ spec:
   project: default
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
-    chart: kube-prometheus-stack
-    targetRevision: 51.2.0  # ✅ stable version with smaller CRDs
+    chart: prometheus
+    targetRevision: 25.21.0
     helm:
       values: |
-        grafana:
+        server:
           enabled: true
-        prometheus:
-          prometheusSpec:
-            serviceMonitorSelectorNilUsesHelmValues: false
+        alertmanager:
+          enabled: false
+        pushgateway:
+          enabled: false
+        nodeExporter:
+          enabled: false
+        kubeStateMetrics:
+          enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
