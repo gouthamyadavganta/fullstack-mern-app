@@ -13,6 +13,9 @@ spec:
       values: |
         clusterName: devops-eks-cluster
         enablePrometheusStack: false
+        alertSinks:
+          - name: "console"
+            type: "console"
   destination:
     server: https://kubernetes.default.svc
     namespace: robusta

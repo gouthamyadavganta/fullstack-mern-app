@@ -13,10 +13,10 @@ spec:
       values: |
         global:
           prometheus:
-            enabled: false  # Use your Prometheus from Argo apps
+            enabled: false
           grafana:
-            enabled: false  # Use your Grafana from Argo apps
-        kubecostToken: temp-token-disabled
+            enabled: false
+        kubecostToken: ""
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
