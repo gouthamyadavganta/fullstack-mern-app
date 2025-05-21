@@ -8,11 +8,9 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: kube-prometheus-stack
-    targetRevision: 57.0.3
+    targetRevision: 51.2.0  # ✅ stable version with smaller CRDs
     helm:
       values: |
-        crds:
-          enabled: false
         grafana:
           enabled: true
         prometheus:
