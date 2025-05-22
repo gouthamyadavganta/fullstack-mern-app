@@ -1,0 +1,19 @@
+helmDefaults:
+  atomic: true
+  wait: true
+  timeout: 600
+
+environments:
+  dev:
+    values:
+      - values/dev-values.yaml
+      - values/secrets.enc.yaml
+
+releases:
+  - name: fullstack-app
+    namespace: fullstack
+    chart: ./
+    version: 0.1.0
+    values:
+      - values/dev-values.yaml
+      - values/secrets.enc.yaml

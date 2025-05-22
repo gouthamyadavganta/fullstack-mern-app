@@ -1,0 +1,21 @@
+image:
+  repository:
+    server: gantagouthamyadav/fullstack-server
+    client: gantagouthamyadav/fullstack-client
+  tag: latest
+
+replicaCount: 1
+
+env:
+  MONGO_URI: "mongodb://fullstack-app-mongo-mongodb.fullstack.svc.cluster.local:27017/mern-social"
+
+mongodb:
+  architecture: standalone
+  useStatefulSet: false
+  auth:
+    enabled: false
+  primary:
+    persistence:
+      enabled: true
+      storageClass: gp2
+      size: 8Gi

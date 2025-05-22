@@ -1,0 +1,23 @@
+client:
+  image: gantagouthamyadav/fullstack-client
+  tag: latest
+  pullPolicy: IfNotPresent
+  replicas: 2
+  port: 80
+
+server:
+  image: gantagouthamyadav/fullstack-server
+  tag: public-posts
+  pullPolicy: Always
+  replicas: 2
+  port: 6001
+  mongo:
+    uri: "mongodb://fullstack-app-mongo-mongodb.fullstack.svc.cluster.local:27017/mern-social"
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  host: fullstack.mernappproject.com

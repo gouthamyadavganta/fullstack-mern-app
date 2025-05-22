@@ -1,0 +1,327 @@
+name: Full DevSecOps CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run as dry-run (no deploy)?'
+        required: false
+        default: 'true'
+
+env:
+  AWS_REGION: us-east-2
+  TFSTATE_BUCKET: ${{ secrets.TFSTATE_BUCKET }}
+  CHART_BUCKET: ${{ secrets.CHART_BUCKET }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  quality-gates:
+    name: Lint, Test, SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Dependencies
+        run: |
+          cd server && npm install --legacy-peer-deps
+          cd ../client && npm install --legacy-peer-deps
+          cd ..
+      - name: Lint & Test
+        run: |
+          cd server && npm run lint && npm test || true
+          cd ../client && npm run lint && npm test || true
+          cd ..
+      - name: Setup Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=gouthamyadavganta_fullstack-mern-app
+            -Dsonar.organization=gouthamyadavganta
+            -Dsonar.sources=.
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+  tfsec:
+    name: Terraform Security Scan (tfsec)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tfsec
+        run: |
+          curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o tfsec
+          chmod +x tfsec
+          sudo mv tfsec /usr/local/bin/
+      - name: Run tfsec
+        continue-on-error: true
+        run: tfsec terraform-aws-infra/
+
+  tflint:
+    name: Terraform Lint (tflint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tflint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+      - name: Run tflint
+        continue-on-error: true
+        run: tflint --chdir=terraform-aws-infra
+
+  build-and-push:
+    name: Build & Push Docker Images
+    needs: [quality-gates, tfsec, tflint]
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+      - name: Build & Push Server Image
+        uses: docker/build-push-action@v4
+        with:
+          context: server
+          push: true
+          tags: |
+            gantagouthamyadav/fullstack-server:${{ github.sha }}
+            gantagouthamyadav/fullstack-server:latest
+      - name: Build & Push Client Image
+        uses: docker/build-push-action@v4
+        with:
+          context: client
+          push: true
+          tags: |
+            gantagouthamyadav/fullstack-client:${{ github.sha }}
+            gantagouthamyadav/fullstack-client:latest
+      - name: Trivy Scan (Server)
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: gantagouthamyadav/fullstack-server:${{ github.sha }}
+      - name: Trivy Scan (Client)
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: gantagouthamyadav/fullstack-client:${{ github.sha }}
+
+  terraform-validate:
+    name: Terraform Validate
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+      - name: Terraform Init & Validate
+        working-directory: terraform-aws-infra
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          terraform init -backend-config="bucket=${{ env.TFSTATE_BUCKET }}"
+          terraform validate
+
+  terraform-plan:
+    name: Terraform Plan
+    needs: terraform-validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+      - name: Terraform Plan
+        working-directory: terraform-aws-infra
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          terraform init -backend-config="bucket=${{ env.TFSTATE_BUCKET }}"
+          terraform plan -out=tfplan || { echo "\u274c Terraform plan failed"; exit 1; }
+      - name: Upload tfplan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform-aws-infra/tfplan
+
+  terraform-apply:
+    name: Terraform Apply
+    needs: terraform-plan
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+      - name: Download tfplan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform-aws-infra
+      - name: Terraform Apply
+        working-directory: terraform-aws-infra
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          terraform init -backend-config="bucket=${{ env.TFSTATE_BUCKET }}"
+          terraform apply -auto-approve tfplan
+
+  terraform-notify:
+    name: Notify After Apply
+    needs: terraform-apply
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - name: Slack Notify
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"\u2705 Terraform apply succeeded on *main*. All infra changes have been applied."}' \
+            "$SLACK_WEBHOOK_URL"
+
+  helm-release:
+    name: Helm Lint/Template or Package/Push
+    needs: terraform-apply
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Helm Operation
+        run: |
+          cd fullstack-app
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event.inputs.dry_run }}" == "false" ]]; then
+            helm package . --version 0.1.${{ github.run_number }} --app-version ${{ github.sha }}
+            aws s3 cp fullstack-app-0.1.${{ github.run_number }}.tgz s3://${{ env.CHART_BUCKET }}/
+          else
+            helm lint .
+            helm template . --values values/dev-values.yaml
+          fi
+
+  argocd-sync:
+    name: Argo CD Sync
+    needs: helm-release
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Generate kubeconfig for cluster
+        run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region ${{ env.AWS_REGION }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Install Argo CD CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.10.7/argocd-linux-amd64
+          chmod +x argocd && sudo mv argocd /usr/local/bin/argocd
+
+      - name: Apply Argo CD Application YAMLs
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: kubectl apply -f argo-apps/
+
+      - name: Sync All Argo CD Apps
+        run: |
+          for app in fullstack-app prometheus velero kubecost robusta; do
+            echo "🔄 Syncing $app"
+            argocd app sync "$app" --server "${{ secrets.ARGOCD_SERVER }}" --auth-token "${{ secrets.ARGOCD_TOKEN }}" --grpc-web --insecure || exit 1
+          done
+
+      - name: Debug App Status (Before Wait)
+        run: |
+          for app in fullstack-app prometheus velero kubecost robusta; do
+            echo "📋 Status for $app"
+            argocd app get "$app" --server "${{ secrets.ARGOCD_SERVER }}" --auth-token "${{ secrets.ARGOCD_TOKEN }}" --grpc-web --insecure || true
+          done
+
+      - name: Wait for All Apps to be Healthy
+        run: |
+          for app in fullstack-app prometheus velero kubecost robusta; do
+            echo "⏳ Waiting on $app"
+            argocd app wait "$app" --server "${ARGOCD_SERVER}" --auth-token "${ARGOCD_TOKEN}" --grpc-web --insecure --health --operation --timeout 300 || exit 1  
+          done
+
+  healthcheck:
+    name: Verify Deployment
+    needs: argocd-sync
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.dry_run == 'false' }}
+    steps:
+      - name: Curl health endpoint
+        run: curl --fail --max-time 5 http://fullstack.mernappproject.com/api/health || exit 1
+
+  cypress-e2e:
+    name: Cypress E2E Tests
+    needs: healthcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run Cypress tests
+        run: npx cypress run
+
+  rollback-on-failure:
+    name: Helmfile Rollback on Failure
+    if: failure()
+    needs: [argocd-sync, healthcheck, cypress-e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Helmfile & SOPS
+        run: |
+          curl -sSL -o helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v0.156.0/helmfile_0.156.0_linux_amd64.tar.gz
+          tar -xzf helmfile.tar.gz
+          chmod +x helmfile && sudo mv helmfile /usr/local/bin/helmfile
+          sudo apt-get update && sudo apt-get install -y age
+          curl -sSL https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64 -o sops
+          chmod +x sops && sudo mv sops /usr/local/bin/sops
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Generate kubeconfig
+        run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region ${{ env.AWS_REGION }}
+      - name: Rollback with Helmfile
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          VELERO_BUCKET: ${{ secrets.VELERO_BUCKET }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          cd fullstack-app
+          helmfile -e dev apply || echo "\u26A0\uFE0F Rollback failed"
+
