@@ -1,0 +1,31 @@
+{
+    "LoadBalancers": [
+        {
+            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-2:626635435190:loadbalancer/net/a14134ae9d05c4e6f8c46bdea4d312d4/4259703fd221fe0f",
+            "DNSName": "a14134ae9d05c4e6f8c46bdea4d312d4-4259703fd221fe0f.elb.us-east-2.amazonaws.com",
+            "CanonicalHostedZoneId": "ZLMOA37VPKANP",
+            "CreatedTime": "2025-05-22T12:28:27.272000+00:00",
+            "LoadBalancerName": "a14134ae9d05c4e6f8c46bdea4d312d4",
+            "Scheme": "internet-facing",
+            "VpcId": "vpc-01c16b480ff020866",
+            "State": {
+                "Code": "active"
+            },
+            "Type": "network",
+            "AvailabilityZones": [
+                {
+                    "ZoneName": "us-east-2a",
+                    "SubnetId": "subnet-0fa04c8a785942e41",
+                    "LoadBalancerAddresses": []
+                },
+                {
+                    "ZoneName": "us-east-2b",
+                    "SubnetId": "subnet-09e89954392c91cc4",
+                    "LoadBalancerAddresses": []
+                }
+            ],
+            "IpAddressType": "ipv4",
+            "EnablePrefixForIpv6SourceNat": "off"
+        }
+    ]
+}
