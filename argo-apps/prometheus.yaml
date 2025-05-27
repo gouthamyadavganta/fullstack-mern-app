@@ -13,6 +13,9 @@ spec:
     helm:
       values: |
         server:
+          persistentVolume:
+            storageClass: gp2-csi
+        server:
           enabled: true
         alertmanager:
           enabled: false

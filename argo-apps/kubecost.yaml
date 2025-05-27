@@ -11,6 +11,9 @@ spec:
     targetRevision: 1.107.1
     helm:
       values: |
+        server:
+          persistentVolume:
+            storageClass: gp2-csi
         global:
           prometheus:
             enabled: false
